@@ -81,29 +81,26 @@ export const NAVIGATION: NavigationItem[] = [
 
   {
     title: "AutoDL",
-    href: "#",
+    href: "/autodl",
     icon: Cpu,
     permission: "autodl",
     section: "labs",
-    comingSoon: true,
   },
 
   {
     title: "AutoNLP",
-    href: "#",
+    href: "/autonlp",
     icon: Languages,
     permission: "autonlp",
     section: "labs",
-    comingSoon: true,
   },
 
   {
     title: "GenAI Studio",
-    href: "#",
+    href: "/genai",
     icon: Sparkles,
     permission: "genai",
     section: "labs",
-    comingSoon: true,
   },
 
   {
