@@ -3,9 +3,7 @@ import axios from "axios";
 const studioApiUrl = process.env.NEXT_PUBLIC_STUDIO_API_URL;
 
 if (!studioApiUrl) {
-  throw new Error(
-    "NEXT_PUBLIC_STUDIO_API_URL is not configured."
-  );
+  throw new Error("NEXT_PUBLIC_STUDIO_API_URL is not configured.");
 }
 
 const studioApi = axios.create({
