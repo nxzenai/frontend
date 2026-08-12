@@ -96,7 +96,7 @@ export const NAVIGATION: NavigationItem[] = [
   },
 
   {
-    title: "GenAI Studio",
+    title: "GenAI",
     href: "/genai",
     icon: Sparkles,
     permission: "genai",
