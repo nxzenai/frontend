@@ -21,7 +21,9 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 border-b border-slate-800/70 bg-slate-950/85 backdrop-blur-xl">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
 
-        {/* Logo */}
+        {/* =====================================================
+            LOGO
+        ====================================================== */}
         <Link
           href="/"
           className="text-2xl font-bold tracking-wide text-white transition hover:text-blue-400 md:text-3xl lg:text-4xl"
@@ -29,7 +31,9 @@ export default function Navbar() {
           NxZenAI
         </Link>
 
-        {/* Desktop Navigation */}
+        {/* =====================================================
+            DESKTOP NAVIGATION
+        ====================================================== */}
         <nav className="hidden items-center gap-8 lg:flex">
           {navigation.map((item) => {
             const active = pathname === item.href;
@@ -48,34 +52,34 @@ export default function Navbar() {
               </Link>
             );
           })}
-
-          {/* AI Studio */}
-          <Link
-            href="/login"
-            className={`rounded-lg border px-4 py-2 font-semibold transition ${
-              pathname.startsWith("/login") ||
-              pathname.startsWith("/dashboard") ||
-              pathname.startsWith("/automl") ||
-              pathname.startsWith("/autodl")
-                ? "border-blue-500 bg-blue-600 text-white"
-                : "border-blue-500/50 text-blue-400 hover:border-blue-400 hover:bg-blue-600 hover:text-white"
-            }`}
-          >
-            AI Studio
-          </Link>
         </nav>
 
-        {/* Desktop CTA */}
+        {/* =====================================================
+            DESKTOP CTA BUTTONS
+        ====================================================== */}
         <div className="hidden items-center gap-4 md:flex">
+
+          {/* Book Demo */}
           <Link
             href="/demo"
             className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700"
           >
             Book Demo
           </Link>
+
+          {/* AI Studio */}
+          <Link
+            href="/login"
+            className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700"
+          >
+            AI Studio
+          </Link>
+
         </div>
 
-        {/* Mobile Toggle */}
+        {/* =====================================================
+            MOBILE MENU TOGGLE
+        ====================================================== */}
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label="Toggle navigation"
@@ -83,6 +87,7 @@ export default function Navbar() {
           className="rounded-lg border border-slate-700 p-2 text-white transition hover:bg-slate-800 lg:hidden"
         >
           {mobileOpen ? (
+            /* Close Icon */
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-6 w-6"
@@ -98,6 +103,7 @@ export default function Navbar() {
               />
             </svg>
           ) : (
+            /* Menu Icon */
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-6 w-6"
@@ -116,7 +122,9 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* Mobile Menu */}
+      {/* =====================================================
+          MOBILE MENU
+      ====================================================== */}
       <div
         className={`overflow-hidden border-t border-slate-800 bg-slate-950 transition-all duration-300 lg:hidden ${
           mobileOpen ? "max-h-[600px]" : "max-h-0"
@@ -124,6 +132,7 @@ export default function Navbar() {
       >
         <nav className="flex flex-col px-6 py-5">
 
+          {/* Mobile Navigation Links */}
           {navigation.map((item) => {
             const active = pathname === item.href;
 
@@ -143,23 +152,9 @@ export default function Navbar() {
             );
           })}
 
-          {/* Mobile AI Studio */}
-          <Link
-            href="/login"
-            onClick={() => setMobileOpen(false)}
-            className={`mt-3 rounded-xl border px-4 py-3 text-center font-semibold transition ${
-              pathname.startsWith("/login") ||
-              pathname.startsWith("/dashboard") ||
-              pathname.startsWith("/automl") ||
-              pathname.startsWith("/autodl")
-                ? "border-blue-500 bg-blue-600 text-white"
-                : "border-blue-500/50 text-blue-400 hover:border-blue-400 hover:bg-blue-600 hover:text-white"
-            }`}
-          >
-            AI Studio
-          </Link>
-
-          {/* Mobile Book Demo */}
+          {/* =================================================
+              MOBILE BOOK DEMO
+          ================================================== */}
           <Link
             href="/demo"
             onClick={() => setMobileOpen(false)}
@@ -167,6 +162,18 @@ export default function Navbar() {
           >
             Book Demo
           </Link>
+
+          {/* =================================================
+              MOBILE AI STUDIO
+          ================================================== */}
+          <Link
+            href="/login"
+            onClick={() => setMobileOpen(false)}
+            className="mt-3 rounded-xl bg-blue-600 px-4 py-3 text-center font-semibold text-white transition hover:bg-blue-700"
+          >
+            AI Studio
+          </Link>
+
         </nav>
       </div>
     </header>
