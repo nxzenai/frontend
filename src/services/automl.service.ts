@@ -1,28 +1,236 @@
-import axios from "axios";
+import { api } from "@/lib/api";
 
-const API = axios.create({
-  baseURL:
-    process.env.NEXT_PUBLIC_STUDIO_API_URL ??
-    "http://127.0.0.1:8001/api/v1",
-});
+import type {
+  AutoMLResult,
+  DatasetColumnResponse,
+  LeaderboardEntry,
+  BestModel,
+} from "@/types/automl";
 
-API.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("token");
+/**
+ * ============================================================
+ * DATASET COLUMNS
+ * ============================================================
+ *
+ * Backend:
+ * POST /api/v1/automl/dataset/columns
+ */
+export async function getDatasetColumns(
+  file: File
+): Promise<DatasetColumnResponse> {
+  const formData = new FormData();
 
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-  }
+  formData.append("file", file);
 
-  return config;
-});
+  const response =
+    await api.post<DatasetColumnResponse>(
+      "/api/v1/automl/dataset/columns",
+      formData
+    );
 
-////////////////////////////////////////////////////////////
-// Train AutoML
-////////////////////////////////////////////////////////////
+  return response.data;
+}
 
+/**
+ * ============================================================
+ * TRAIN AUTOML
+ * ============================================================
+ *
+ * Backend:
+ * POST /api/v1/automl/train
+ *
+ * Use this when only the standard training response
+ * is required.
+ */
 export async function trainAutoML(
+  file: File,
+  targetColumn: string
+): Promise<AutoMLResult> {
+  const formData = new FormData();
+
+  formData.append("file", file);
+  formData.append("target_column", targetColumn);
+
+  const response =
+    await api.post<AutoMLResult>(
+      "/api/v1/automl/train",
+      formData
+    );
+
+  return response.data;
+}
+
+/**
+ * ============================================================
+ * COMPLETE AUTOML RESPONSE
+ * ============================================================
+ *
+ * Backend:
+ * POST /api/v1/automl/complete
+ *
+ * This is the endpoint used by:
+ *
+ * AutoMLWorkspace
+ *      ↓
+ * useAutoML
+ *      ↓
+ * getCompleteResponse
+ *      ↓
+ * /api/v1/automl/complete
+ *
+ * DO NOT change this to /jobs.
+ */
+export async function getCompleteResponse(
+  file: File,
+  targetColumn: string
+): Promise<AutoMLResult> {
+  const formData = new FormData();
+
+  formData.append("file", file);
+  formData.append("target_column", targetColumn);
+
+  const response =
+    await api.post<AutoMLResult>(
+      "/api/v1/automl/complete",
+      formData
+    );
+
+  return response.data;
+}
+
+/**
+ * ============================================================
+ * DATASET INFORMATION
+ * ============================================================
+ *
+ * Backend:
+ * POST /api/v1/automl/dataset/info
+ */
+export async function getDatasetInfo(
+  file: File
+) {
+  const formData = new FormData();
+
+  formData.append("file", file);
+
+  const response =
+    await api.post(
+      "/api/v1/automl/dataset/info",
+      formData
+    );
+
+  return response.data;
+}
+
+/**
+ * ============================================================
+ * DATASET SHAPE
+ * ============================================================
+ *
+ * Backend:
+ * POST /api/v1/automl/dataset/shape
+ */
+export async function getDatasetShape(
+  file: File
+) {
+  const formData = new FormData();
+
+  formData.append("file", file);
+
+  const response =
+    await api.post(
+      "/api/v1/automl/dataset/shape",
+      formData
+    );
+
+  return response.data;
+}
+
+/**
+ * ============================================================
+ * DATASET PREVIEW
+ * ============================================================
+ *
+ * Backend:
+ * POST /api/v1/automl/dataset/preview
+ */
+export async function getDatasetPreview(
+  file: File
+) {
+  const formData = new FormData();
+
+  formData.append("file", file);
+
+  const response =
+    await api.post(
+      "/api/v1/automl/dataset/preview",
+      formData
+    );
+
+  return response.data;
+}
+
+/**
+ * ============================================================
+ * LEADERBOARD
+ * ============================================================
+ *
+ * Backend:
+ * POST /api/v1/automl/leaderboard
+ */
+export async function getLeaderboard(
+  file: File,
+  targetColumn: string
+): Promise<LeaderboardEntry[]> {
+  const formData = new FormData();
+
+  formData.append("file", file);
+  formData.append("target_column", targetColumn);
+
+  const response =
+    await api.post<LeaderboardEntry[]>(
+      "/api/v1/automl/leaderboard",
+      formData
+    );
+
+  return response.data;
+}
+
+/**
+ * ============================================================
+ * BEST MODEL
+ * ============================================================
+ *
+ * Backend:
+ * POST /api/v1/automl/best-model
+ */
+export async function getBestModel(
+  file: File,
+  targetColumn: string
+): Promise<BestModel> {
+  const formData = new FormData();
+
+  formData.append("file", file);
+  formData.append("target_column", targetColumn);
+
+  const response =
+    await api.post<BestModel>(
+      "/api/v1/automl/best-model",
+      formData
+    );
+
+  return response.data;
+}
+
+/**
+ * ============================================================
+ * EXECUTIVE SUMMARY
+ * ============================================================
+ *
+ * Backend:
+ * POST /api/v1/automl/summary
+ */
+export async function getSummary(
   file: File,
   targetColumn: string
 ) {
@@ -31,244 +239,23 @@ export async function trainAutoML(
   formData.append("file", file);
   formData.append("target_column", targetColumn);
 
-  const { data } = await API.post(
-    "/automl/train",
-    formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }
-  );
+  const response =
+    await api.post(
+      "/api/v1/automl/summary",
+      formData
+    );
 
-  return data;
+  return response.data;
 }
 
-////////////////////////////////////////////////////////////
-// Dataset Information
-////////////////////////////////////////////////////////////
-
-export async function getDatasetInfo(
-  file: File
-) {
-  const formData = new FormData();
-
-  formData.append("file", file);
-
-  const { data } = await API.post(
-    "/automl/dataset/info",
-    formData,
-    {
-      headers: {
-        "Content-Type":
-          "multipart/form-data",
-      },
-    }
-  );
-
-  return data;
-}
-
-////////////////////////////////////////////////////////////
-// Dataset Preview
-////////////////////////////////////////////////////////////
-
-export async function getDatasetPreview(
-  file: File,
-  rows = 5
-) {
-  const formData = new FormData();
-
-  formData.append("file", file);
-
-  const { data } = await API.post(
-    `/automl/dataset/preview?rows=${rows}`,
-    formData,
-    {
-      headers: {
-        "Content-Type":
-          "multipart/form-data",
-      },
-    }
-  );
-
-  return data;
-}
-
-////////////////////////////////////////////////////////////
-// Dataset Columns
-////////////////////////////////////////////////////////////
-
-export async function getDatasetColumns(
-  file: File
-) {
-  const formData = new FormData();
-
-  formData.append("file", file);
-
-  const { data } = await API.post(
-    "/automl/dataset/columns",
-    formData,
-    {
-      headers: {
-        "Content-Type":
-          "multipart/form-data",
-      },
-    }
-  );
-
-  return data;
-}
-
-////////////////////////////////////////////////////////////
-// Dataset Shape
-////////////////////////////////////////////////////////////
-
-export async function getDatasetShape(
-  file: File
-) {
-  const formData = new FormData();
-
-  formData.append("file", file);
-
-  const { data } = await API.post(
-    "/automl/dataset/shape",
-    formData,
-    {
-      headers: {
-        "Content-Type":
-          "multipart/form-data",
-      },
-    }
-  );
-
-  return data;
-}
-
-////////////////////////////////////////////////////////////
-// Executive Summary
-////////////////////////////////////////////////////////////
-
-export async function getSummary(
-  file: File,
-  targetColumn: string
-) {
-  const formData = new FormData();
-
-  formData.append("file", file);
-  formData.append(
-    "target_column",
-    targetColumn
-  );
-
-  const { data } = await API.post(
-    "/automl/summary",
-    formData,
-    {
-      headers: {
-        "Content-Type":
-          "multipart/form-data",
-      },
-    }
-  );
-
-  return data;
-}
-
-////////////////////////////////////////////////////////////
-// Leaderboard
-////////////////////////////////////////////////////////////
-
-export async function getLeaderboard(
-  file: File,
-  targetColumn: string
-) {
-  const formData = new FormData();
-
-  formData.append("file", file);
-  formData.append(
-    "target_column",
-    targetColumn
-  );
-
-  const { data } = await API.post(
-    "/automl/leaderboard",
-    formData,
-    {
-      headers: {
-        "Content-Type":
-          "multipart/form-data",
-      },
-    }
-  );
-
-  return data;
-}
-
-////////////////////////////////////////////////////////////
-// Best Model
-////////////////////////////////////////////////////////////
-
-export async function getBestModel(
-  file: File,
-  targetColumn: string
-) {
-  const formData = new FormData();
-
-  formData.append("file", file);
-  formData.append(
-    "target_column",
-    targetColumn
-  );
-
-  const { data } = await API.post(
-    "/automl/best-model",
-    formData,
-    {
-      headers: {
-        "Content-Type":
-          "multipart/form-data",
-      },
-    }
-  );
-
-  return data;
-}
-
-////////////////////////////////////////////////////////////
-// Recommendations
-////////////////////////////////////////////////////////////
-
-export async function getRecommendations(
-  file: File,
-  targetColumn: string
-) {
-  const formData = new FormData();
-
-  formData.append("file", file);
-  formData.append(
-    "target_column",
-    targetColumn
-  );
-
-  const { data } = await API.post(
-    "/automl/recommendations",
-    formData,
-    {
-      headers: {
-        "Content-Type":
-          "multipart/form-data",
-      },
-    }
-  );
-
-  return data;
-}
-
-////////////////////////////////////////////////////////////
-// Statistics
-////////////////////////////////////////////////////////////
-
+/**
+ * ============================================================
+ * TRAINING STATISTICS
+ * ============================================================
+ *
+ * Backend:
+ * POST /api/v1/automl/statistics
+ */
 export async function getStatistics(
   file: File,
   targetColumn: string
@@ -276,124 +263,39 @@ export async function getStatistics(
   const formData = new FormData();
 
   formData.append("file", file);
-  formData.append(
-    "target_column",
-    targetColumn
-  );
+  formData.append("target_column", targetColumn);
 
-  const { data } = await API.post(
-    "/automl/statistics",
-    formData,
-    {
-      headers: {
-        "Content-Type":
-          "multipart/form-data",
-      },
-    }
-  );
+  const response =
+    await api.post(
+      "/api/v1/automl/statistics",
+      formData
+    );
 
-  return data;
+  return response.data;
 }
 
-////////////////////////////////////////////////////////////
-// Complete AutoML Response
-////////////////////////////////////////////////////////////
-
-export async function getCompleteResponse(
+/**
+ * ============================================================
+ * RECOMMENDATIONS
+ * ============================================================
+ *
+ * Backend:
+ * POST /api/v1/automl/recommendations
+ */
+export async function getRecommendations(
   file: File,
   targetColumn: string
 ) {
-
   const formData = new FormData();
 
   formData.append("file", file);
+  formData.append("target_column", targetColumn);
 
-  formData.append(
-    "target_column",
-    targetColumn
-  );
-
-  console.log("Uploading File:", file.name);
-
-  console.log("Target Column:", targetColumn);
-
-  try {
-
-    const { data } = await API.post(
-
-      "/automl/complete",
-
-      formData,
-
-      {
-
-        headers: {
-
-          "Content-Type":
-            "multipart/form-data",
-
-        },
-
-      }
-
+  const response =
+    await api.post(
+      "/api/v1/automl/recommendations",
+      formData
     );
 
-    console.log("SUCCESS");
-
-    console.log(data);
-
-    return data;
-
-  }
-
-  catch (error: any) {
-
-    console.error("STATUS");
-
-    console.error(error.response?.status);
-
-    console.error("BACKEND RESPONSE");
-
-    console.error(error.response?.data);
-
-    throw error;
-
-  }
-
-}
-
-////////////////////////////////////////////////////////////
-// Health
-////////////////////////////////////////////////////////////
-
-export async function health() {
-  const { data } = await API.get(
-    "/automl/health"
-  );
-
-  return data;
-}
-
-////////////////////////////////////////////////////////////
-// Version
-////////////////////////////////////////////////////////////
-
-export async function version() {
-  const { data } = await API.get(
-    "/automl/version"
-  );
-
-  return data;
-}
-
-////////////////////////////////////////////////////////////
-// Information
-////////////////////////////////////////////////////////////
-
-export async function information() {
-  const { data } = await API.get(
-    "/automl/information"
-  );
-
-  return data;
+  return response.data;
 }

@@ -11,20 +11,17 @@ import type {
 } from "@/types/automl";
 
 export default function useAutoML() {
-  //////////////////////////////////////////////////////
-  // States
-  //////////////////////////////////////////////////////
+  // ============================================================
+  // STATE
+  // ============================================================
 
   const [loading, setLoading] = useState(false);
 
-  const [error, setError] =
-    useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const [datasetInfo, setDatasetInfo] =
-    useState<any>(null);
+  const [datasetInfo, setDatasetInfo] = useState<any>(null);
 
-  const [datasetShape, setDatasetShape] =
-    useState<any>(null);
+  const [datasetShape, setDatasetShape] = useState<any>(null);
 
   const [datasetColumns, setDatasetColumns] =
     useState<string[]>([]);
@@ -38,116 +35,186 @@ export default function useAutoML() {
   const [bestModel, setBestModel] =
     useState<BestModel | null>(null);
 
-  const [summary, setSummary] =
-    useState<any>(null);
+  const [summary, setSummary] = useState<any>(null);
 
-  const [statistics, setStatistics] =
-    useState<any>(null);
+  const [statistics, setStatistics] = useState<any>(null);
 
   const [recommendations, setRecommendations] =
-    useState<any>(null);
+    useState<string[]>([]);
 
   const [result, setResult] =
     useState<AutoMLResult | null>(null);
 
-  //////////////////////////////////////////////////////
-  // Reset
-  //////////////////////////////////////////////////////
+  // ============================================================
+  // CLEAR / RESET
+  // ============================================================
 
   function clear() {
+    setLoading(false);
     setError(null);
 
     setDatasetInfo(null);
-
     setDatasetShape(null);
-
     setDatasetColumns([]);
-
     setDatasetPreview([]);
 
     setLeaderboard([]);
-
     setBestModel(null);
 
     setSummary(null);
-
     setStatistics(null);
-
-    setRecommendations(null);
+    setRecommendations([]);
 
     setResult(null);
   }
 
-  //////////////////////////////////////////////////////
-  // Dataset Info
-  //////////////////////////////////////////////////////
+  // ============================================================
+  // DATASET INFORMATION
+  // ============================================================
 
   async function loadDatasetInfo(file: File) {
-    const data =
-      await AutoMLService.getDatasetInfo(file);
+    try {
+      setError(null);
 
-    setDatasetInfo(data);
+      const data =
+        await AutoMLService.getDatasetInfo(file);
 
-    return data;
+      setDatasetInfo(data);
+
+      return data;
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.detail ??
+        err?.message ??
+        "Failed to load dataset information.";
+
+      setError(message);
+
+      throw err;
+    }
   }
 
-  //////////////////////////////////////////////////////
-  // Dataset Shape
-  //////////////////////////////////////////////////////
+  // ============================================================
+  // DATASET SHAPE
+  // ============================================================
 
   async function loadDatasetShape(file: File) {
-    const data =
-      await AutoMLService.getDatasetShape(file);
+    try {
+      setError(null);
 
-    setDatasetShape(data);
+      const data =
+        await AutoMLService.getDatasetShape(file);
 
-    return data;
+      setDatasetShape(data);
+
+      return data;
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.detail ??
+        err?.message ??
+        "Failed to load dataset shape.";
+
+      setError(message);
+
+      throw err;
+    }
   }
 
-  //////////////////////////////////////////////////////
-  // Dataset Columns
-  //////////////////////////////////////////////////////
+  // ============================================================
+  // DATASET COLUMNS
+  // ============================================================
 
-async function loadDatasetColumns(file: File) {
+  async function loadDatasetColumns(file: File) {
+    try {
+      setError(null);
 
-  const data =
-    await AutoMLService.getDatasetColumns(file);
+      const data =
+        await AutoMLService.getDatasetColumns(file);
 
-  console.log("Columns API");
+      console.log(
+        "AutoML Dataset Columns:",
+        data
+      );
 
-  console.log(data);
+      const columns =
+        Array.isArray(data)
+          ? data
+          : Array.isArray(data?.columns)
+          ? data.columns
+          : [];
 
-  setDatasetColumns(data.columns);
+      setDatasetColumns(columns);
 
-  return data.columns;
+      return columns;
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.detail ??
+        err?.message ??
+        "Failed to load dataset columns.";
 
-}
+      setError(message);
 
-  //////////////////////////////////////////////////////
-  // Dataset Preview
-  //////////////////////////////////////////////////////
-
-  async function loadDatasetPreview(
-    file: File
-  ) {
-    const data =
-      await AutoMLService.getDatasetPreview(file);
-
-    setDatasetPreview(data);
-
-    return data;
+      throw err;
+    }
   }
 
-  //////////////////////////////////////////////////////
-  // Train AutoML
-  //////////////////////////////////////////////////////
+  // ============================================================
+  // DATASET PREVIEW
+  // ============================================================
+
+  async function loadDatasetPreview(file: File) {
+    try {
+      setError(null);
+
+      const data =
+        await AutoMLService.getDatasetPreview(file);
+
+      const preview =
+        Array.isArray(data)
+          ? data
+          : Array.isArray(data?.preview)
+          ? data.preview
+          : Array.isArray(data?.data)
+          ? data.data
+          : [];
+
+      setDatasetPreview(preview);
+
+      return data;
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.detail ??
+        err?.message ??
+        "Failed to load dataset preview.";
+
+      setError(message);
+
+      throw err;
+    }
+  }
+
+  // ============================================================
+  // TRAIN AUTO ML
+  //
+  // IMPORTANT:
+  // The current backend exposes:
+  //
+  // POST /api/v1/automl/train
+  // POST /api/v1/automl/train/file
+  // POST /api/v1/automl/complete
+  //
+  // There is NO:
+  //
+  // POST /api/v1/automl/jobs
+  //
+  // Therefore this hook does NOT call /jobs.
+  // ============================================================
 
   async function train(
     file: File,
     targetColumn: string
   ) {
     setLoading(true);
-
     setError(null);
 
     try {
@@ -161,10 +228,12 @@ async function loadDatasetColumns(file: File) {
 
       return response;
     } catch (err: any) {
-      setError(
+      const message =
         err?.response?.data?.detail ??
-          err.message
-      );
+        err?.message ??
+        "AutoML training failed.";
+
+      setError(message);
 
       throw err;
     } finally {
@@ -172,220 +241,373 @@ async function loadDatasetColumns(file: File) {
     }
   }
 
-  //////////////////////////////////////////////////////
-  // Leaderboard
-  //////////////////////////////////////////////////////
+  // ============================================================
+  // LEADERBOARD
+  // ============================================================
 
   async function loadLeaderboard(
     file: File,
     targetColumn: string
   ) {
-    const data =
-      await AutoMLService.getLeaderboard(
-        file,
-        targetColumn
-      );
+    try {
+      setError(null);
 
-    setLeaderboard(data);
+      const data =
+        await AutoMLService.getLeaderboard(
+          file,
+          targetColumn
+        );
 
-    return data;
+      const leaderboardData =
+        Array.isArray(data)
+          ? data
+          : Array.isArray(data?.leaderboard)
+          ? data.leaderboard
+          : [];
+
+      setLeaderboard(leaderboardData);
+
+      return leaderboardData;
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.detail ??
+        err?.message ??
+        "Failed to load leaderboard.";
+
+      setError(message);
+
+      throw err;
+    }
   }
 
-  //////////////////////////////////////////////////////
-  // Best Model
-  //////////////////////////////////////////////////////
+  // ============================================================
+  // BEST MODEL
+  // ============================================================
 
   async function loadBestModel(
     file: File,
     targetColumn: string
   ) {
-    const data =
-      await AutoMLService.getBestModel(
-        file,
-        targetColumn
-      );
+    try {
+      setError(null);
 
-    setBestModel(data);
+      const data =
+        await AutoMLService.getBestModel(
+          file,
+          targetColumn
+        );
 
-    return data;
+      setBestModel(data);
+
+      return data;
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.detail ??
+        err?.message ??
+        "Failed to load best model.";
+
+      setError(message);
+
+      throw err;
+    }
   }
 
-  //////////////////////////////////////////////////////
-  // Summary
-  //////////////////////////////////////////////////////
+  // ============================================================
+  // EXECUTIVE SUMMARY
+  // ============================================================
 
   async function loadSummary(
     file: File,
     targetColumn: string
   ) {
-    const data =
-      await AutoMLService.getSummary(
-        file,
-        targetColumn
-      );
+    try {
+      setError(null);
 
-    setSummary(data);
+      const data =
+        await AutoMLService.getSummary(
+          file,
+          targetColumn
+        );
 
-    return data;
+      setSummary(data);
+
+      return data;
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.detail ??
+        err?.message ??
+        "Failed to load executive summary.";
+
+      setError(message);
+
+      throw err;
+    }
   }
 
-  //////////////////////////////////////////////////////
-  // Statistics
-  //////////////////////////////////////////////////////
+  // ============================================================
+  // TRAINING STATISTICS
+  // ============================================================
 
   async function loadStatistics(
     file: File,
     targetColumn: string
   ) {
-    const data =
-      await AutoMLService.getStatistics(
-        file,
-        targetColumn
-      );
+    try {
+      setError(null);
 
-    setStatistics(data);
+      const data =
+        await AutoMLService.getStatistics(
+          file,
+          targetColumn
+        );
 
-    return data;
+      setStatistics(data);
+
+      return data;
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.detail ??
+        err?.message ??
+        "Failed to load training statistics.";
+
+      setError(message);
+
+      throw err;
+    }
   }
 
-  //////////////////////////////////////////////////////
-  // Recommendations
-  //////////////////////////////////////////////////////
+  // ============================================================
+  // RECOMMENDATIONS
+  // ============================================================
 
   async function loadRecommendations(
     file: File,
     targetColumn: string
   ) {
-    const data =
-      await AutoMLService.getRecommendations(
-        file,
+    try {
+      setError(null);
+
+      const data =
+        await AutoMLService.getRecommendations(
+          file,
+          targetColumn
+        );
+
+      const recommendationsData =
+        Array.isArray(data)
+          ? data
+          : Array.isArray(data?.recommendations)
+          ? data.recommendations
+          : [];
+
+      setRecommendations(
+        recommendationsData
+      );
+
+      return recommendationsData;
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.detail ??
+        err?.message ??
+        "Failed to load recommendations.";
+
+      setError(message);
+
+      throw err;
+    }
+  }
+
+  // ============================================================
+  // COMPLETE AUTO ML RESPONSE
+  //
+  // BACKEND:
+  //
+  // POST /api/v1/automl/complete
+  //
+  // This should be the primary function used by
+  // AutoMLWorkspace.
+  // ============================================================
+
+  async function loadCompleteResponse(
+    file: File,
+    targetColumn: string
+  ) {
+    setLoading(true);
+    setError(null);
+
+    try {
+      console.log(
+        "Starting AutoML complete request..."
+      );
+
+      console.log(
+        "Target Column:",
         targetColumn
       );
 
-    setRecommendations(data);
-
-    return data;
-  }
-
-  //////////////////////////////////////////////////////
-  // Complete Response
-  //////////////////////////////////////////////////////
-
-  //////////////////////////////////////////////////////
-// Complete Response
-//////////////////////////////////////////////////////
-
-async function loadCompleteResponse(
-  file: File,
-  targetColumn: string,
-) {
-
-  try {
-
-    setLoading(true);
-
-    setError(null);
-
-    const data =
-      await AutoMLService.getCompleteResponse(
-        file,
-        targetColumn,
+      console.log(
+        "File:",
+        file.name
       );
 
-    console.log(data);
+      const data =
+        await AutoMLService.getCompleteResponse(
+          file,
+          targetColumn
+        );
 
-    // Save complete response
-    setResult(data);
+      console.log(
+        "AutoML Complete Response:",
+        data
+      );
 
-    // Dataset Summary
-    setDatasetInfo(
-      data.dataset_summary ?? null
-    );
+      // ========================================================
+      // COMPLETE RAW RESPONSE
+      // ========================================================
 
-    // Leaderboard
-    setLeaderboard(
-      data.leaderboard ?? []
-    );
+      setResult(data);
 
-    // Best Model
-    setBestModel(
-      data.best_model ?? null
-    );
+      // ========================================================
+      // DATASET SUMMARY
+      //
+      // Backend documentation indicates:
+      // dataset_summary
+      // ========================================================
 
-    // Statistics
-    setStatistics(
-      data.training_statistics ?? null
-    );
+      setDatasetInfo(
+        data?.dataset_summary ??
+        null
+      );
 
-    // Executive Summary
-    setSummary(
-      data.analysis?.summary ?? null
-    );
+      // ========================================================
+      // LEADERBOARD
+      // ========================================================
 
-    // Recommendations
-    setRecommendations(
-      data.analysis?.recommendations ?? []
-    );
+      setLeaderboard(
+        Array.isArray(data?.leaderboard)
+          ? data.leaderboard
+          : []
+      );
 
-    return data;
+      // ========================================================
+      // BEST MODEL
+      // ========================================================
 
-  } catch (err: any) {
+      setBestModel(
+        data?.best_model ??
+        null
+      );
 
-    console.error(err);
+      // ========================================================
+      // TRAINING STATISTICS
+      //
+      // Your backend's response may expose this as:
+      // statistics
+      //
+      // Your previous code expected:
+      // training_statistics
+      //
+      // Support both so the frontend does not break
+      // if the response uses either field.
+      // ========================================================
 
-    setError(
-      err.response?.data?.detail ??
-      err.message
-    );
+      setStatistics(
+        data?.training_statistics ??
+        data?.statistics ??
+        null
+      );
 
-    throw err;
+      // ========================================================
+      // EXECUTIVE SUMMARY
+      //
+      // Support the current analysis structure as well
+      // as a direct summary field.
+      // ========================================================
 
-  } finally {
+      setSummary(
+        data?.analysis?.summary ??
+        data?.summary ??
+        null
+      );
 
-    setLoading(false);
+      // ========================================================
+      // RECOMMENDATIONS
+      // ========================================================
 
+      const recommendationData =
+        Array.isArray(
+          data?.analysis?.recommendations
+        )
+          ? data.analysis.recommendations
+          : Array.isArray(
+              data?.recommendations
+            )
+          ? data.recommendations
+          : [];
+
+      setRecommendations(
+        recommendationData
+      );
+
+      return data;
+    } catch (err: any) {
+      console.error(
+        "AutoML Complete Error:",
+        err
+      );
+
+      const message =
+        err?.response?.data?.detail ??
+        err?.response?.data?.message ??
+        err?.message ??
+        "AutoML training failed.";
+
+      setError(message);
+
+      throw err;
+    } finally {
+      setLoading(false);
+    }
   }
 
-}
-  //////////////////////////////////////////////////////
-  // Return
-  //////////////////////////////////////////////////////
+  // ============================================================
+  // RETURN
+  // ============================================================
 
   return {
+    // State
+    loading,
+    error,
+    result,
 
-loading,
+    datasetInfo,
+    datasetShape,
+    datasetColumns,
+    datasetPreview,
 
-error,
+    leaderboard,
+    bestModel,
 
-result,
+    summary,
+    statistics,
+    recommendations,
 
-datasetInfo,
+    // Actions
+    clear,
 
-leaderboard,
+    loadDatasetInfo,
+    loadDatasetShape,
+    loadDatasetColumns,
+    loadDatasetPreview,
 
-bestModel,
+    train,
 
-statistics,
+    loadLeaderboard,
+    loadBestModel,
+    loadSummary,
+    loadStatistics,
+    loadRecommendations,
 
-summary,
-
-recommendations,
-
-datasetShape,
-
-datasetColumns,
-
-datasetPreview,
-
-loadDatasetInfo,
-
-loadDatasetShape,
-
-loadDatasetColumns,
-
-loadDatasetPreview,
-
-loadCompleteResponse,
-
-};
+    loadCompleteResponse,
+  };
 }
