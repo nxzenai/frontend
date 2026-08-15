@@ -40,7 +40,6 @@ export interface DatasetInspectResponse {
   dataset_summary?: DatasetSummary;
 
   rows?: number;
-  columns?: number;
   memory_usage_bytes?: number;
   missing_values?: number;
   target_column?: string | null;
