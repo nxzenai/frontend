@@ -1,170 +1,112 @@
 "use client";
 
-import {
-  UploadCloud,
-  FileSpreadsheet,
-  CheckCircle2,
-} from "lucide-react";
+import { useRef } from "react";
 
-interface DatasetUploaderProps {
-  selectedFile: File | null;
-  onFileChange: (file: File | null) => void;
-  onUpload: () => void;
-  loading: boolean;
+interface Props {
+  file: File | null;
+  loading?: boolean;
+  onFileSelected: (
+    file: File
+  ) => void;
 }
 
 export default function DatasetUploader({
-  selectedFile,
-  onFileChange,
-  onUpload,
-  loading,
-}: DatasetUploaderProps) {
+  file,
+  loading = false,
+  onFileSelected,
+}: Props) {
+  const inputRef =
+    useRef<HTMLInputElement>(null);
+
+  function handleChange(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const selected =
+      event.target.files?.[0];
+
+    if (!selected) {
+      return;
+    }
+
+    const allowedExtensions = [
+      ".csv",
+      ".xlsx",
+      ".xls",
+    ];
+
+    const valid =
+      allowedExtensions.some(
+        (extension) =>
+          selected.name
+            .toLowerCase()
+            .endsWith(extension)
+      );
+
+    if (!valid) {
+      return;
+    }
+
+    onFileSelected(selected);
+  }
+
   return (
-    <div className="rounded-2xl border border-slate-700 bg-slate-900 p-8 shadow-xl">
-
-      {/* Header */}
-
-      <div className="flex items-center gap-4">
-
-        <div className="rounded-xl bg-blue-600/20 p-3">
-
-          <UploadCloud
-            size={28}
-            className="text-blue-400"
-          />
-
-        </div>
-
-        <div>
-
-          <h2 className="text-3xl font-bold text-white">
-            Upload Dataset
-          </h2>
-
-          <p className="mt-1 text-slate-400">
-            Upload a CSV dataset to start AutoML training.
-          </p>
-
-        </div>
-
-      </div>
-
-      {/* Upload Area */}
-
-      <label
-        className="
-          mt-8
-          flex
-          cursor-pointer
-          flex-col
-          items-center
-          justify-center
-          rounded-2xl
-          border-2
-          border-dashed
-          border-slate-700
-          bg-slate-950
-          p-12
-          transition
-          hover:border-blue-500
-          hover:bg-slate-800
-        "
-      >
-
-        <UploadCloud
-          size={52}
-          className="text-blue-400"
-        />
-
-        <p className="mt-5 text-lg font-semibold text-white">
-          Click to upload a dataset
-        </p>
-
-        <p className="mt-2 text-sm text-slate-400">
-          CSV files only
-        </p>
-
-        <input
-          type="file"
-          accept=".csv"
-          className="hidden"
-          onChange={(e) => {
-            const file =
-              e.target.files?.[0] ?? null;
-
-            onFileChange(file);
-          }}
-        />
-
-      </label>
-
-      {/* Selected File */}
-
-      {selectedFile && (
-
-        <div className="mt-8 rounded-2xl border border-green-500/20 bg-green-500/10 p-5">
-
-          <div className="flex items-center gap-4">
-
-            <div className="rounded-xl bg-green-500/20 p-3">
-
-              <FileSpreadsheet
-                size={26}
-                className="text-green-400"
-              />
-
-            </div>
-
-            <div className="flex-1">
-
-              <p className="font-semibold text-white">
-                {selectedFile.name}
-              </p>
-
-              <p className="mt-1 text-sm text-slate-400">
-                {(selectedFile.size / 1024).toFixed(2)} KB
-              </p>
-
-            </div>
-
-            <CheckCircle2
-              size={28}
-              className="text-green-400"
-            />
-
-          </div>
-
-        </div>
-
-      )}
-
-      {/* Upload Button */}
+    <div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".csv,.xlsx,.xls"
+        onChange={handleChange}
+        className="hidden"
+      />
 
       <button
-        onClick={onUpload}
-        disabled={!selectedFile || loading}
-        className="
-          mt-8
-          w-full
-          rounded-xl
-          bg-blue-600
-          px-6
-          py-4
-          text-lg
-          font-semibold
-          text-white
-          transition-all
-          duration-200
-          hover:bg-blue-700
-          disabled:cursor-not-allowed
-          disabled:opacity-50
-        "
+        type="button"
+        disabled={loading}
+        onClick={() =>
+          inputRef.current?.click()
+        }
+        className="w-full rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center transition hover:border-blue-400 hover:bg-blue-50 disabled:cursor-wait"
       >
-        {loading
-          ? "Uploading Dataset..."
-          : "Upload Dataset"}
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 text-2xl">
+          📊
+        </div>
+
+        <p className="mt-5 text-base font-bold text-slate-900">
+          {loading
+            ? "Analyzing dataset..."
+            : file
+            ? "Change dataset"
+            : "Upload your dataset"}
+        </p>
+
+        <p className="mt-2 text-sm text-slate-500">
+          CSV, XLSX or XLS
+        </p>
+
+        <p className="mt-3 text-xs text-slate-400">
+          Click to browse your computer
+        </p>
       </button>
 
+      {file && !loading && (
+        <div className="mt-3 flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-slate-900">
+              {file.name}
+            </p>
+
+            <p className="mt-1 text-xs text-slate-500">
+              {(file.size / 1024).toFixed(
+                1
+              )} KB
+            </p>
+          </div>
+
+          <span className="ml-4 rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+            Ready
+          </span>
+        </div>
+      )}
     </div>
   );
 }

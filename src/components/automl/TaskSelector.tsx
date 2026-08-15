@@ -1,154 +1,74 @@
 "use client";
 
-import { BrainCircuit, BarChart3, Activity, ShieldAlert, Layers, Sparkles } from "lucide-react";
-
 import type { AutoMLTask } from "@/types/automl";
 
-interface TaskSelectorProps {
-  value: AutoMLTask;
-  onChange: (value: AutoMLTask) => void;
+interface TaskOption {
+  id: AutoMLTask;
+  title: string;
+  description: string;
+  icon: string;
 }
 
-const TASKS = [
-  {
-    id: "auto",
-    title: "Auto Detect",
-    description: "Automatically detect Classification or Regression.",
-    icon: Sparkles,
-  },
-  {
-    id: "classification",
-    title: "Classification",
-    description: "Predict categorical values.",
-    icon: BrainCircuit,
-  },
-  {
-    id: "regression",
-    title: "Regression",
-    description: "Predict continuous numerical values.",
-    icon: BarChart3,
-  },
-  {
-    id: "clustering",
-    title: "Clustering",
-    description: "Discover hidden groups in the dataset.",
-    icon: Layers,
-  },
-  {
-    id: "anomaly",
-    title: "Anomaly Detection",
-    description: "Detect unusual observations.",
-    icon: ShieldAlert,
-  },
-  {
-    id: "dimensionality",
-    title: "Dimensionality Reduction",
-    description: "Reduce feature space.",
-    icon: Activity,
-  },
-] as const;
+interface Props {
+  tasks: TaskOption[];
+  selectedTask: AutoMLTask;
+  onChange: (
+    task: AutoMLTask
+  ) => void;
+}
 
 export default function TaskSelector({
-  value,
+  tasks,
+  selectedTask,
   onChange,
-}: TaskSelectorProps) {
+}: Props) {
   return (
-    <div className="rounded-2xl border border-slate-700 bg-slate-900 p-6">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      {tasks.map((task) => {
+        const selected =
+          task.id === selectedTask;
 
-      <h2 className="text-2xl font-bold text-white">
-        AutoML Task
-      </h2>
+        return (
+          <button
+            key={task.id}
+            type="button"
+            onClick={() =>
+              onChange(task.id)
+            }
+            className={[
+              "group relative rounded-xl border p-5 text-left transition-all",
+              selected
+                ? "border-blue-500 bg-blue-50 shadow-sm ring-1 ring-blue-500"
+                : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50",
+            ].join(" ")}
+          >
+            {selected && (
+              <span className="absolute right-4 top-4 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
+                ✓
+              </span>
+            )}
 
-      <p className="mt-2 text-slate-400">
-        Select the machine learning task.
-      </p>
-
-      <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-
-        {TASKS.map((task) => {
-
-          const Icon = task.icon;
-
-          const selected = value === task.id;
-
-          return (
-
-            <button
-              key={task.id}
-              type="button"
-              onClick={() =>
-                onChange(task.id as AutoMLTask)
-              }
-              className={`
-                rounded-2xl
-                border
-                p-6
-                text-left
-                transition-all
-                duration-200
-
-                ${
-                  selected
-                    ? "border-blue-500 bg-blue-500/10"
-                    : "border-slate-700 bg-slate-950 hover:border-blue-500 hover:bg-slate-800"
-                }
-              `}
+            <div
+              className={[
+                "mb-4 flex h-11 w-11 items-center justify-center rounded-xl text-xl font-bold",
+                selected
+                  ? "bg-blue-600 text-white"
+                  : "bg-slate-100 text-slate-700",
+              ].join(" ")}
             >
+              {task.icon}
+            </div>
 
-              <div className="flex items-center gap-4">
+            <h3 className="text-base font-bold text-slate-950">
+              {task.title}
+            </h3>
 
-                <div
-                  className={`
-                    rounded-xl
-                    p-3
-
-                    ${
-                      selected
-                        ? "bg-blue-600"
-                        : "bg-slate-800"
-                    }
-                  `}
-                >
-                  <Icon
-                    size={24}
-                    className="text-white"
-                  />
-                </div>
-
-                <div>
-
-                  <h3 className="font-semibold text-white">
-                    {task.title}
-                  </h3>
-
-                  <p className="mt-1 text-sm text-slate-400">
-                    {task.description}
-                  </p>
-
-                </div>
-
-              </div>
-
-            </button>
-
-          );
-
-        })}
-
-      </div>
-
-      <div className="mt-6 rounded-xl border border-blue-500/20 bg-blue-500/10 p-4">
-
-        <p className="text-sm text-blue-300">
-
-          <strong>Selected Task:</strong>{" "}
-
-          {TASKS.find((t) => t.id === value)?.title}
-
-        </p>
-
-      </div>
-
+            <p className="mt-2 text-sm leading-5 text-slate-600">
+              {task.description}
+            </p>
+          </button>
+        );
+      })}
     </div>
   );
 }
