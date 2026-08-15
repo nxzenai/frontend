@@ -394,13 +394,43 @@ export default function useAutoML() {
           : []
       );
 
-      if (
-        data?.dataset_summary
-      ) {
-        setDatasetInfo(
-          data.dataset_summary
-        );
-      }
+      if (data.dataset_summary) {
+  const summary = data.dataset_summary;
+
+  const columnsFromInfo =
+    summary.columns_info &&
+    typeof summary.columns_info === "object"
+      ? Object.keys(summary.columns_info)
+      : [];
+
+  setDatasetInfo({
+    task: data.task,
+
+    rows: summary.rows,
+
+    memory_usage_bytes:
+      summary.memory_usage_bytes,
+
+    missing_values:
+      summary.missing_values,
+
+    target_column:
+      summary.target_column,
+
+    columns:
+      columnsFromInfo,
+
+    columns_info:
+      summary.columns_info,
+
+    dataset_summary:
+      summary,
+  });
+
+  if (columnsFromInfo.length > 0) {
+    setDatasetColumns(columnsFromInfo);
+  }
+}
 
       return data;
     } catch (err) {
