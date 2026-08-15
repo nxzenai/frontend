@@ -1,278 +1,323 @@
 "use client";
 
-import {
-  CheckCircle2,
-  XCircle,
-  Trophy,
-  Clock3,
-} from "lucide-react";
-
-import type {
-  LeaderboardEntry,
-} from "@/types/automl";
-
-interface LeaderboardProps {
-
-  leaderboard: LeaderboardEntry[];
-
-}
-
-function score(entry: LeaderboardEntry): string {
-
-  if (entry.accuracy !== undefined)
-    return entry.accuracy.toFixed(4);
-
-  if (entry.f1_score !== undefined)
-    return entry.f1_score.toFixed(4);
-
-  if (entry.precision !== undefined)
-    return entry.precision.toFixed(4);
-
-  if (entry.recall !== undefined)
-    return entry.recall.toFixed(4);
-
-  if (entry.roc_auc !== undefined)
-    return entry.roc_auc.toFixed(4);
-
-  if (entry.r2_score !== undefined)
-    return entry.r2_score.toFixed(4);
-
-  if (entry.silhouette_score !== undefined)
-    return entry.silhouette_score.toFixed(4);
-
-  if (entry.explained_variance !== undefined)
-    return entry.explained_variance.toFixed(4);
-
-  return "--";
-
+interface Props {
+  leaderboard: any[];
+  task?: string;
 }
 
 export default function Leaderboard({
-
   leaderboard,
-
-}: LeaderboardProps) {
-
-  if (!leaderboard.length)
+  task,
+}: Props) {
+  if (
+    !leaderboard ||
+    leaderboard.length === 0
+  ) {
     return null;
+  }
+
+  const isClassification =
+    task === "classification";
+
+  const isRegression =
+    task === "regression";
+
+  const isClustering =
+    task === "clustering";
 
   return (
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-200 px-6 py-5">
+        <h2 className="text-lg font-bold text-slate-950">
+          Model Leaderboard
+        </h2>
 
-    <div className="rounded-2xl border border-slate-700 bg-slate-900">
-
-      {/* Header */}
-
-      <div className="flex items-center justify-between border-b border-slate-700 p-6">
-
-        <div>
-
-          <h2 className="text-2xl font-bold text-white">
-
-            AutoML Leaderboard
-
-          </h2>
-
-          <p className="mt-2 text-sm text-slate-400">
-
-            Ranked Machine Learning Models
-
-          </p>
-
-        </div>
-
-        <div className="rounded-xl bg-yellow-500/10 p-3">
-
-          <Trophy
-            className="text-yellow-400"
-            size={28}
-          />
-
-        </div>
-
+        <p className="mt-1 text-sm text-slate-500">
+          Models ranked according to their
+          evaluation performance.
+        </p>
       </div>
 
-      {/* Table */}
-
       <div className="overflow-x-auto">
-
-        <table className="min-w-full">
-
-          <thead className="bg-slate-950">
-
-            <tr>
-
-              <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">
-
+        <table className="w-full min-w-[850px] border-collapse">
+          <thead>
+            <tr className="border-b border-slate-200 bg-slate-50 text-left">
+              <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
                 Rank
-
               </th>
 
-              <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">
-
+              <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
                 Model
-
               </th>
 
-              <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">
+              {isClassification && (
+                <>
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Accuracy
+                  </th>
 
-                Score
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Precision
+                  </th>
 
-              </th>
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Recall
+                  </th>
 
-              <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    F1
+                  </th>
 
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    ROC-AUC
+                  </th>
+                </>
+              )}
+
+              {isRegression && (
+                <>
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    R²
+                  </th>
+
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    MAE
+                  </th>
+
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    RMSE
+                  </th>
+
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    MAPE
+                  </th>
+                </>
+              )}
+
+              {isClustering && (
+                <>
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Clusters
+                  </th>
+
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Silhouette
+                  </th>
+
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Calinski
+                  </th>
+
+                  <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Davies-Bouldin
+                  </th>
+                </>
+              )}
+
+              <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
                 Time
-
               </th>
 
-              <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">
-
+              <th className="px-5 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
                 Status
-
               </th>
-
             </tr>
-
           </thead>
 
           <tbody>
-
             {leaderboard.map(
+              (model, index) => {
+                const rank =
+                  model.rank ??
+                  index + 1;
 
-              (model, index) => (
+                const modelName =
+                  model.model_name ??
+                  model.model ??
+                  "Unknown";
 
-                <tr
-
-                  key={index}
-
-                  className="border-t border-slate-800 hover:bg-slate-800/40"
-
-                >
-
-                  {/* Rank */}
-
-                  <td className="px-6 py-4">
-
-                    <div className="flex items-center gap-3">
-
-                      {index === 0 && (
-
-                        <Trophy
-
-                          size={18}
-
-                          className="text-yellow-400"
-
-                        />
-
-                      )}
-
-                      <span className="font-semibold text-white">
-
-                        #{model.rank}
-
+                return (
+                  <tr
+                    key={`${modelName}-${index}`}
+                    className="border-b border-slate-100 transition hover:bg-slate-50"
+                  >
+                    <td className="px-5 py-4">
+                      <span
+                        className={[
+                          "inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold",
+                          rank === 1
+                            ? "bg-blue-600 text-white"
+                            : "bg-slate-100 text-slate-700",
+                        ].join(" ")}
+                      >
+                        {rank}
                       </span>
+                    </td>
 
-                    </div>
+                    <td className="px-5 py-4">
+                      <span className="font-semibold text-slate-900">
+                        {modelName}
+                      </span>
+                    </td>
 
-                  </td>
+                    {isClassification && (
+                      <>
+                        <td className="px-5 py-4 text-sm font-medium text-slate-700">
+                          {formatPercent(
+                            model.accuracy
+                          )}
+                        </td>
 
-                  {/* Model */}
+                        <td className="px-5 py-4 text-sm text-slate-700">
+                          {formatPercent(
+                            model.precision
+                          )}
+                        </td>
 
-                  <td className="px-6 py-4">
+                        <td className="px-5 py-4 text-sm text-slate-700">
+                          {formatPercent(
+                            model.recall
+                          )}
+                        </td>
 
-                    <div>
+                        <td className="px-5 py-4 text-sm font-semibold text-slate-900">
+                          {formatPercent(
+                            model.f1_score
+                          )}
+                        </td>
 
-                      <p className="font-semibold text-white">
-
-                        {model.model_name}
-
-                      </p>
-
-                    </div>
-
-                  </td>
-
-                  {/* Score */}
-
-                  <td className="px-6 py-4 text-center">
-
-                    <span className="rounded-lg bg-blue-500/10 px-4 py-2 font-semibold text-blue-300">
-
-                      {score(model)}
-
-                    </span>
-
-                  </td>
-
-                  {/* Training Time */}
-
-                  <td className="px-6 py-4 text-center">
-
-                    <div className="flex items-center justify-center gap-2 text-slate-300">
-
-                      <Clock3 size={15} />
-
-                      {model.training_time}s
-
-                    </div>
-
-                  </td>
-
-                  {/* Status */}
-
-                  <td className="px-6 py-4 text-center">
-
-                    {model.success ? (
-
-                      <div className="inline-flex items-center gap-2 rounded-full bg-green-500/10 px-3 py-2 text-green-400">
-
-                        <CheckCircle2 size={16} />
-
-                        Success
-
-                      </div>
-
-                    ) : (
-
-                      <div className="inline-flex items-center gap-2 rounded-full bg-red-500/10 px-3 py-2 text-red-400">
-
-                        <XCircle size={16} />
-
-                        Failed
-
-                      </div>
-
+                        <td className="px-5 py-4 text-sm text-slate-700">
+                          {formatPercent(
+                            model.roc_auc
+                          )}
+                        </td>
+                      </>
                     )}
 
-                  </td>
+                    {isRegression && (
+                      <>
+                        <td className="px-5 py-4 text-sm font-semibold text-slate-900">
+                          {formatNumber(
+                            model.r2_score
+                          )}
+                        </td>
 
-                </tr>
+                        <td className="px-5 py-4 text-sm text-slate-700">
+                          {formatNumber(
+                            model.mae
+                          )}
+                        </td>
 
-              ),
+                        <td className="px-5 py-4 text-sm text-slate-700">
+                          {formatNumber(
+                            model.rmse
+                          )}
+                        </td>
 
+                        <td className="px-5 py-4 text-sm text-slate-700">
+                          {formatNumber(
+                            model.mape
+                          )}
+                        </td>
+                      </>
+                    )}
+
+                    {isClustering && (
+                      <>
+                        <td className="px-5 py-4 text-sm text-slate-700">
+                          {model.n_clusters ??
+                            "—"}
+                        </td>
+
+                        <td className="px-5 py-4 text-sm font-semibold text-slate-900">
+                          {formatNumber(
+                            model.silhouette_score
+                          )}
+                        </td>
+
+                        <td className="px-5 py-4 text-sm text-slate-700">
+                          {formatNumber(
+                            model.calinski_harabasz_score
+                          )}
+                        </td>
+
+                        <td className="px-5 py-4 text-sm text-slate-700">
+                          {formatNumber(
+                            model.davies_bouldin_score
+                          )}
+                        </td>
+                      </>
+                    )}
+
+                    <td className="px-5 py-4 text-sm text-slate-600">
+                      {model.training_time !==
+                      undefined
+                        ? `${Number(
+                            model.training_time
+                          ).toFixed(2)}s`
+                        : "—"}
+                    </td>
+
+                    <td className="px-5 py-4">
+                      <span
+                        className={[
+                          "rounded-full px-2.5 py-1 text-xs font-bold",
+                          model.success
+                            ? "bg-green-100 text-green-700"
+                            : model.status ===
+                              "timeout"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-red-100 text-red-700",
+                        ].join(" ")}
+                      >
+                        {model.success
+                          ? "Success"
+                          : model.status ===
+                            "timeout"
+                          ? "Timeout"
+                          : "Failed"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              }
             )}
-
           </tbody>
-
         </table>
-
       </div>
-
-      {/* Footer */}
-
-      <div className="border-t border-slate-700 bg-slate-950 p-5">
-
-        <p className="text-sm text-slate-400">
-
-          {leaderboard.length} models evaluated
-
-        </p>
-
-      </div>
-
-    </div>
-
+    </section>
   );
+}
 
+function formatPercent(
+  value: any
+) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return "—";
+  }
+
+  return `${(
+    Number(value) * 100
+  ).toFixed(1)}%`;
+}
+
+function formatNumber(
+  value: any
+) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return "—";
+  }
+
+  return Number(value).toLocaleString(
+    undefined,
+    {
+      maximumFractionDigits: 2,
+    }
+  );
 }
