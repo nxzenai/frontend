@@ -1,0 +1,2 @@
+"use client";
+export default function Error({ error, reset }: { error: Error; reset: () => void }) { return <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-10 text-center"><h2 className="text-xl font-semibold text-red-300">EDA Hub could not load</h2><p className="mt-2 text-slate-300">{error.message}</p><button onClick={reset} className="mt-5 rounded-lg bg-red-600 px-4 py-2 font-medium text-white">Try again</button></div>; }
