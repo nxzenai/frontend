@@ -24,8 +24,26 @@ import type {
    TASKS
 ============================================================ */
 
+type SelectableAutoMLTask = Extract<
+  AutoMLTask,
+  "classification" | "regression" | "clustering"
+>;
+
+function normalizeSelectableTask(
+  task: AutoMLTask
+): SelectableAutoMLTask {
+  if (
+    task === "regression" ||
+    task === "clustering"
+  ) {
+    return task;
+  }
+
+  return "classification";
+}
+
 const TASKS: {
-  value: AutoMLTask;
+  value: SelectableAutoMLTask;
   label: string;
   description: string;
   disabled?: boolean;
@@ -47,20 +65,6 @@ const TASKS: {
     label: "Clustering",
     description:
       "Discover groups without a target.",
-  },
-  {
-    value: "anomaly",
-    label: "Anomaly Detection",
-    description:
-      "Coming next.",
-    disabled: true,
-  },
-  {
-    value: "dimensionality",
-    label: "Dimensionality Reduction",
-    description:
-      "Coming next.",
-    disabled: true,
   },
 ];
 
@@ -509,8 +513,10 @@ export default function AutoMLWorkspace() {
     task,
     setTask,
   ] =
-    useState<AutoMLTask>(
-      "classification"
+    useState<SelectableAutoMLTask>(
+      normalizeSelectableTask(
+        "classification"
+      )
     );
 
   const [
@@ -780,8 +786,13 @@ export default function AutoMLWorkspace() {
   function handleTaskChange(
     nextTask: AutoMLTask
   ) {
+    const selectableTask =
+      normalizeSelectableTask(
+        nextTask
+      );
+
     setTask(
-      nextTask
+      selectableTask
     );
 
     /*
@@ -790,7 +801,7 @@ export default function AutoMLWorkspace() {
      */
     setOptimizationMetric(
       defaultMetricForTask(
-        nextTask
+        selectableTask
       )
     );
 
@@ -799,7 +810,7 @@ export default function AutoMLWorkspace() {
      * target columns.
      */
     if (
-      nextTask ===
+      selectableTask ===
       "clustering"
     ) {
       setTargetColumn("");
