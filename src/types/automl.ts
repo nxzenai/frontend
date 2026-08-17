@@ -43,6 +43,11 @@ export interface DatasetColumnInfo {
   dtype?: string;
   missing?: number;
   unique?: number;
+  nullable?: boolean;
+  required?: boolean;
+  categories?: PredictionValue[];
+  allowed_values?: PredictionValue[];
+  values?: PredictionValue[];
 
   [key: string]: any;
 }
@@ -260,17 +265,7 @@ export interface AutoMLResult {
 
   recommendations?: string[];
 
-  artifact?: {
-    available?: boolean;
-
-    model_name?: string;
-
-    artifact_version?: string;
-
-    task?: string;
-
-    [key: string]: any;
-  };
+  artifact?: AutoMLArtifact;
 
   skipped_algorithms?: string[];
 
@@ -298,4 +293,67 @@ export interface AutoMLTrainRequest {
   task?: AutoMLTask;
 
   optimizationMetric?: AutoMLOptimizationMetric;
+}
+
+/* ============================================================
+   SAVED ARTIFACT AND MANUAL PREDICTION
+============================================================ */
+
+export type PredictionValue =
+  | string
+  | number
+  | boolean
+  | null;
+
+export type PredictionRow = Record<
+  string,
+  PredictionValue
+>;
+
+export interface AutoMLArtifact {
+  available?: boolean;
+  model_name?: string;
+  artifact_version?: string;
+  task?: string;
+  model_filename?: string;
+  prediction_supported?: boolean;
+  prediction_unavailable_reason?: string | null;
+
+  [key: string]: unknown;
+}
+
+export interface AutoMLPredictionRequest {
+  model_filename: string;
+  rows: PredictionRow[];
+}
+
+export interface AutoMLPredictionResponse {
+  task: string;
+  model_name: string;
+  model_filename: string;
+  rows: number;
+  predictions: PredictionValue[];
+  classes?: PredictionValue[];
+  probabilities?: number[][];
+
+  [key: string]: unknown;
+}
+
+export interface AutoMLPredictionUnsupportedDetail {
+  code: "PREDICTION_NOT_SUPPORTED";
+  message: string;
+  model_name: string;
+  task: string;
+}
+
+export interface AutoMLPredictionErrorResponse {
+  detail?:
+    | string
+    | AutoMLPredictionUnsupportedDetail
+    | Array<{
+        msg?: string;
+        loc?: Array<string | number>;
+      }>;
+  message?: string;
+  error?: string;
 }

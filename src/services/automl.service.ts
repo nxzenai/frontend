@@ -1,3 +1,5 @@
+import axios from "axios";
+
 import { api } from "@/lib/api";
 
 import type {
@@ -6,6 +8,9 @@ import type {
   AutoMLOptimizationMetric,
   DatasetInspectResponse,
   DatasetPreviewResponse,
+  AutoMLPredictionErrorResponse,
+  AutoMLPredictionRequest,
+  AutoMLPredictionResponse,
 } from "@/types/automl";
 
 /* ============================================================
@@ -370,4 +375,126 @@ export async function getAutoMLHealth() {
     );
 
   return response.data;
+}
+
+/* ============================================================
+   MANUAL PREDICTION
+============================================================ */
+
+function isPredictionResponse(
+  value: unknown
+): value is AutoMLPredictionResponse {
+  if (
+    typeof value !== "object" ||
+    value === null
+  ) {
+    return false;
+  }
+
+  const response = value as Record<
+    string,
+    unknown
+  >;
+
+  return (
+    typeof response.task === "string" &&
+    typeof response.model_name === "string" &&
+    typeof response.model_filename === "string" &&
+    typeof response.rows === "number" &&
+    Array.isArray(response.predictions)
+  );
+}
+
+export async function predictValues(
+  request: AutoMLPredictionRequest
+): Promise<AutoMLPredictionResponse> {
+  const response =
+    await api.post<unknown>(
+      "/api/v1/automl/predict/values",
+      request
+    );
+
+  if (!isPredictionResponse(response.data)) {
+    throw new Error(
+      "The prediction service returned an invalid response."
+    );
+  }
+
+  return response.data;
+}
+
+export function getPredictionErrorMessage(
+  error: unknown
+): string {
+  if (!axios.isAxiosError(error)) {
+    return error instanceof Error
+      ? error.message
+      : "Prediction could not be completed.";
+  }
+
+  if (
+    error.code === "ECONNABORTED" ||
+    error.code === "ETIMEDOUT"
+  ) {
+    return "The prediction request timed out. Please try again.";
+  }
+
+  if (!error.response) {
+    return "Unable to reach the prediction service. Please check your connection and try again.";
+  }
+
+  const data = error.response
+    .data as AutoMLPredictionErrorResponse | undefined;
+  const detail = data?.detail;
+
+  if (
+    typeof detail === "object" &&
+    detail !== null &&
+    !Array.isArray(detail) &&
+    detail.code === "PREDICTION_NOT_SUPPORTED"
+  ) {
+    return detail.message;
+  }
+
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) => item.msg)
+      .filter(
+        (message): message is string =>
+          typeof message === "string"
+      );
+
+    if (messages.length > 0) {
+      return messages.join(", ");
+    }
+  }
+
+  if (typeof data?.message === "string") {
+    return data.message;
+  }
+
+  if (typeof data?.error === "string") {
+    return data.error;
+  }
+
+  switch (error.response.status) {
+    case 400:
+      return "The prediction request was invalid.";
+    case 401:
+      return "Your session is not authorized to make this prediction.";
+    case 403:
+      return "You do not have permission to make this prediction.";
+    case 404:
+      return "The saved model could not be found.";
+    case 409:
+      return "This saved model cannot process the prediction request.";
+    case 422:
+      return "The prediction values are invalid.";
+    default:
+      return "Prediction could not be completed. Please try again.";
+  }
 }
