@@ -209,12 +209,24 @@ function PredictionResult({
 
   if (result.task === "clustering") {
     return (
-      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-400">
-          Assigned cluster
-        </p>
-        <p className="mt-2 break-words text-xl font-bold text-white">
-          {displayValue(prediction)}
+      <div className="space-y-3">
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+          <p className="break-words text-lg font-bold text-white">
+            Assigned cluster: {displayValue(
+              prediction
+            )}
+          </p>
+          {result.number_of_clusters !==
+            undefined &&
+            result.number_of_clusters !==
+              null && (
+              <p className="mt-2 text-xs text-emerald-200/80">
+                Configured clusters: {result.number_of_clusters}
+              </p>
+            )}
+        </div>
+        <p className="text-xs leading-5 text-slate-500">
+          Cluster labels are identifiers and do not represent an order or quality ranking.
         </p>
       </div>
     );

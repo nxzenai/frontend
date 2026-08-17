@@ -11,6 +11,8 @@ import type {
   AutoMLPredictionErrorResponse,
   AutoMLPredictionRequest,
   AutoMLPredictionResponse,
+  AutoMLInformation,
+  ClusteringTrainingConfig,
 } from "@/types/automl";
 
 /* ============================================================
@@ -21,7 +23,8 @@ function createFormData(
   file: File,
   targetColumn?: string,
   task?: AutoMLTask,
-  optimizationMetric?: AutoMLOptimizationMetric
+  optimizationMetric?: AutoMLOptimizationMetric,
+  clusteringConfig?: ClusteringTrainingConfig
 ): FormData {
   const formData = new FormData();
 
@@ -63,6 +66,37 @@ function createFormData(
     formData.append(
       "optimization_metric",
       optimizationMetric
+    );
+  }
+
+  if (
+    task === "clustering" &&
+    clusteringConfig
+  ) {
+    formData.append(
+      "cluster_count_mode",
+      clusteringConfig.cluster_count_mode
+    );
+
+    if (
+      clusteringConfig.cluster_count_mode ===
+        "custom" &&
+      clusteringConfig.number_of_clusters !==
+        null
+    ) {
+      formData.append(
+        "number_of_clusters",
+        String(
+          clusteringConfig.number_of_clusters
+        )
+      );
+    }
+
+    formData.append(
+      "require_prediction_support",
+      String(
+        clusteringConfig.require_prediction_support
+      )
     );
   }
 
@@ -133,14 +167,16 @@ export async function trainFromFile(
   file: File,
   targetColumn?: string,
   task?: AutoMLTask,
-  optimizationMetric?: AutoMLOptimizationMetric
+  optimizationMetric?: AutoMLOptimizationMetric,
+  clusteringConfig?: ClusteringTrainingConfig
 ): Promise<AutoMLResult> {
   const formData =
     createFormData(
       file,
       targetColumn,
       task,
-      optimizationMetric
+      optimizationMetric,
+      clusteringConfig
     );
 
   const response =
@@ -160,13 +196,15 @@ export async function getCompleteResponse(
   file: File,
   targetColumn?: string,
   task?: AutoMLTask,
-  optimizationMetric?: AutoMLOptimizationMetric
+  optimizationMetric?: AutoMLOptimizationMetric,
+  clusteringConfig?: ClusteringTrainingConfig
 ): Promise<AutoMLResult> {
   return trainFromFile(
     file,
     targetColumn,
     task,
-    optimizationMetric
+    optimizationMetric,
+    clusteringConfig
   );
 }
 
@@ -342,9 +380,9 @@ export async function getRecommendations(
    AUTOML INFO
 ============================================================ */
 
-export async function getAutoMLInfo() {
+export async function getAutoMLInfo(): Promise<AutoMLInformation> {
   const response =
-    await api.get(
+    await api.get<AutoMLInformation>(
       "/api/v1/automl/info"
     );
 
