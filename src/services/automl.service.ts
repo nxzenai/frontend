@@ -3,18 +3,20 @@ import { api } from "@/lib/api";
 import type {
   AutoMLResult,
   AutoMLTask,
+  AutoMLOptimizationMetric,
   DatasetInspectResponse,
   DatasetPreviewResponse,
 } from "@/types/automl";
 
 /* ============================================================
-   Helpers
+   FORM DATA
 ============================================================ */
 
 function createFormData(
   file: File,
   targetColumn?: string,
-  task?: AutoMLTask
+  task?: AutoMLTask,
+  optimizationMetric?: AutoMLOptimizationMetric
 ): FormData {
   const formData = new FormData();
 
@@ -30,7 +32,7 @@ function createFormData(
   ) {
     formData.append(
       "target_column",
-      targetColumn
+      targetColumn.trim()
     );
   }
 
@@ -41,6 +43,21 @@ function createFormData(
     formData.append(
       "task",
       task
+    );
+  }
+
+  /*
+   * Backend can start consuming this field.
+   *
+   * Older backend versions that do not explicitly
+   * declare the field will simply ignore it.
+   */
+  if (
+    optimizationMetric
+  ) {
+    formData.append(
+      "optimization_metric",
+      optimizationMetric
     );
   }
 
@@ -100,15 +117,9 @@ export async function previewDataset(
 ============================================================ */
 
 /*
- * IMPORTANT
- *
- * Browser upload MUST use:
+ * Browser uploads MUST use:
  *
  * POST /api/v1/automl/train
- *
- * NOT:
- *
- * POST /api/v1/automl/train/file
  *
  * /train/file expects a server-side filepath.
  */
@@ -116,13 +127,15 @@ export async function previewDataset(
 export async function trainFromFile(
   file: File,
   targetColumn?: string,
-  task?: AutoMLTask
+  task?: AutoMLTask,
+  optimizationMetric?: AutoMLOptimizationMetric
 ): Promise<AutoMLResult> {
   const formData =
     createFormData(
       file,
       targetColumn,
-      task
+      task,
+      optimizationMetric
     );
 
   const response =
@@ -138,19 +151,17 @@ export async function trainFromFile(
    COMPLETE RESPONSE
 ============================================================ */
 
-/*
- * Keep this as an alias for compatibility
- * with existing components.
- */
 export async function getCompleteResponse(
   file: File,
   targetColumn?: string,
-  task?: AutoMLTask
+  task?: AutoMLTask,
+  optimizationMetric?: AutoMLOptimizationMetric
 ): Promise<AutoMLResult> {
   return trainFromFile(
     file,
     targetColumn,
-    task
+    task,
+    optimizationMetric
   );
 }
 
@@ -160,7 +171,7 @@ export async function getCompleteResponse(
 
 export async function getDatasetInfo(
   file: File
-) {
+): Promise<DatasetInspectResponse> {
   return inspectDataset(file);
 }
 
@@ -177,7 +188,9 @@ export async function getDatasetColumns(
     await inspectDataset(file);
 
   if (
-    Array.isArray(data.columns)
+    Array.isArray(
+      data.columns
+    )
   ) {
     return {
       columns: data.columns,
@@ -202,7 +215,8 @@ export async function getDatasetColumns(
   ) {
     return {
       columns: Object.keys(
-        data.dataset_summary.columns_info
+        data.dataset_summary
+          .columns_info
       ),
     };
   }
@@ -213,24 +227,21 @@ export async function getDatasetColumns(
 }
 
 /* ============================================================
-   LEGACY / COMPATIBILITY METHODS
+   LEGACY / COMPATIBILITY
 ============================================================ */
-
-/*
- * These methods intentionally use /train rather than
- * the old /train/file endpoint.
- */
 
 export async function getLeaderboard(
   file: File,
   targetColumn?: string,
-  task?: AutoMLTask
+  task?: AutoMLTask,
+  optimizationMetric?: AutoMLOptimizationMetric
 ) {
   const result =
     await trainFromFile(
       file,
       targetColumn,
-      task
+      task,
+      optimizationMetric
     );
 
   return result.leaderboard ?? [];
@@ -239,13 +250,15 @@ export async function getLeaderboard(
 export async function getBestModel(
   file: File,
   targetColumn?: string,
-  task?: AutoMLTask
+  task?: AutoMLTask,
+  optimizationMetric?: AutoMLOptimizationMetric
 ) {
   const result =
     await trainFromFile(
       file,
       targetColumn,
-      task
+      task,
+      optimizationMetric
     );
 
   return result.best_model;
@@ -254,34 +267,44 @@ export async function getBestModel(
 export async function getSummary(
   file: File,
   targetColumn?: string,
-  task?: AutoMLTask
+  task?: AutoMLTask,
+  optimizationMetric?: AutoMLOptimizationMetric
 ) {
   const result =
     await trainFromFile(
       file,
       targetColumn,
-      task
+      task,
+      optimizationMetric
     );
 
   return {
     task: result.task,
+
     dataset_summary:
       result.dataset_summary,
+
     best_model:
       result.best_model,
+
+    optimization_metric:
+      result.optimization_metric ??
+      result.selected_metric,
   };
 }
 
 export async function getStatistics(
   file: File,
   targetColumn?: string,
-  task?: AutoMLTask
+  task?: AutoMLTask,
+  optimizationMetric?: AutoMLOptimizationMetric
 ) {
   const result =
     await trainFromFile(
       file,
       targetColumn,
-      task
+      task,
+      optimizationMetric
     );
 
   return (
@@ -294,13 +317,15 @@ export async function getStatistics(
 export async function getRecommendations(
   file: File,
   targetColumn?: string,
-  task?: AutoMLTask
+  task?: AutoMLTask,
+  optimizationMetric?: AutoMLOptimizationMetric
 ) {
   const result =
     await trainFromFile(
       file,
       targetColumn,
-      task
+      task,
+      optimizationMetric
     );
 
   return (
@@ -309,7 +334,7 @@ export async function getRecommendations(
 }
 
 /* ============================================================
-   AUTO-ML INFO
+   AUTOML INFO
 ============================================================ */
 
 export async function getAutoMLInfo() {
@@ -322,7 +347,7 @@ export async function getAutoMLInfo() {
 }
 
 /* ============================================================
-   AVAILABLE MODELS
+   MODELS
 ============================================================ */
 
 export async function getAutoMLModels() {
