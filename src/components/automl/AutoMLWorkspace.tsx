@@ -2,17 +2,21 @@
 
 import {
   ChangeEvent,
+  useEffect,
   useMemo,
   useState,
 } from "react";
 
 import useAutoML from "@/hooks/useAutoML";
 import BestModelPrediction from "@/components/automl/BestModelPrediction";
+import { getAutoMLInfo } from "@/services/automl.service";
 
 import type {
   AutoMLResult,
   AutoMLTask,
   AutoMLOptimizationMetric,
+  ClusterCountMode,
+  ClusteringLimits,
   LeaderboardEntry,
 } from "@/types/automl";
 
@@ -522,6 +526,30 @@ export default function AutoMLWorkspace() {
     null
   );
 
+  const [
+    clusterCountMode,
+    setClusterCountMode,
+  ] = useState<ClusterCountMode>(
+    "automatic"
+  );
+
+  const [
+    numberOfClusters,
+    setNumberOfClusters,
+  ] = useState("");
+
+  const [
+    requirePredictionSupport,
+    setRequirePredictionSupport,
+  ] = useState(false);
+
+  const [
+    clusteringLimits,
+    setClusteringLimits,
+  ] = useState<ClusteringLimits | null>(
+    null
+  );
+
   /*
    * User-selectable optimization metric.
    */
@@ -545,6 +573,37 @@ export default function AutoMLWorkspace() {
         ),
       [task]
     );
+
+  useEffect(() => {
+    if (
+      task !== "clustering" ||
+      clusteringLimits
+    ) {
+      return;
+    }
+
+    let active = true;
+
+    getAutoMLInfo()
+      .then((information) => {
+        const limits =
+          information.metadata
+            ?.clustering;
+
+        if (active && limits) {
+          setClusteringLimits(
+            limits
+          );
+        }
+      })
+      .catch(() => {
+        /* Optional limits do not block training. */
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [task, clusteringLimits]);
 
   /* ==========================================================
      DATASET SHAPE
@@ -578,6 +637,82 @@ export default function AutoMLWorkspace() {
       datasetColumns,
     ]);
 
+  const maximumCustomClusters =
+    useMemo(() => {
+      const configuredMaximum =
+        clusteringLimits
+          ?.maximum_number_of_clusters;
+      const rowMaximum =
+        typeof shape.rows === "number"
+          ? shape.rows - 1
+          : null;
+
+      if (
+        configuredMaximum !==
+          undefined &&
+        rowMaximum !== null
+      ) {
+        return Math.min(
+          configuredMaximum,
+          rowMaximum
+        );
+      }
+
+      return (
+        configuredMaximum ??
+        rowMaximum
+      );
+    }, [
+      clusteringLimits,
+      shape.rows,
+    ]);
+
+  const clusteringValidationError =
+    useMemo(() => {
+      if (
+        task !== "clustering" ||
+        clusterCountMode !== "custom"
+      ) {
+        return null;
+      }
+
+      if (!numberOfClusters.trim()) {
+        return "Enter the number of clusters.";
+      }
+
+      const count = Number(
+        numberOfClusters
+      );
+      const minimum =
+        clusteringLimits
+          ?.minimum_number_of_clusters ??
+        2;
+
+      if (!Number.isInteger(count)) {
+        return "Number of clusters must be an integer.";
+      }
+
+      if (count < minimum) {
+        return `Number of clusters must be at least ${minimum}.`;
+      }
+
+      if (
+        maximumCustomClusters !==
+          null &&
+        count > maximumCustomClusters
+      ) {
+        return `Number of clusters must not exceed ${maximumCustomClusters}.`;
+      }
+
+      return null;
+    }, [
+      task,
+      clusterCountMode,
+      numberOfClusters,
+      clusteringLimits,
+      maximumCustomClusters,
+    ]);
+
   /* ==========================================================
      FILE CHANGE
   ========================================================== */
@@ -600,6 +735,14 @@ export default function AutoMLWorkspace() {
 
     setPredictionTrainingResult(
       null
+    );
+
+    setClusterCountMode(
+      "automatic"
+    );
+    setNumberOfClusters("");
+    setRequirePredictionSupport(
+      false
     );
 
     /*
@@ -660,6 +803,14 @@ export default function AutoMLWorkspace() {
       "clustering"
     ) {
       setTargetColumn("");
+    } else {
+      setClusterCountMode(
+        "automatic"
+      );
+      setNumberOfClusters("");
+      setRequirePredictionSupport(
+        false
+      );
     }
   }
 
@@ -688,7 +839,23 @@ export default function AutoMLWorkspace() {
 
         task,
 
-        optimizationMetric
+        optimizationMetric,
+
+        task === "clustering"
+          ? {
+              cluster_count_mode:
+                clusterCountMode,
+              number_of_clusters:
+                clusterCountMode ===
+                "custom"
+                  ? Number(
+                      numberOfClusters
+                    )
+                  : null,
+              require_prediction_support:
+                requirePredictionSupport,
+            }
+          : undefined
       );
 
       setPredictionTrainingResult(
@@ -715,7 +882,8 @@ export default function AutoMLWorkspace() {
         "clustering" ||
       !!targetColumn
     ) &&
-    !!optimizationMetric;
+    !!optimizationMetric &&
+    !clusteringValidationError;
 
   /* ==========================================================
      RENDER
@@ -760,6 +928,14 @@ export default function AutoMLWorkspace() {
 
                 setPredictionTrainingResult(
                   null
+                );
+
+                setClusterCountMode(
+                  "automatic"
+                );
+                setNumberOfClusters("");
+                setRequirePredictionSupport(
+                  false
                 );
 
                 setOptimizationMetric(
@@ -1060,6 +1236,150 @@ export default function AutoMLWorkspace() {
                 Clustering does not require a target column.
               </div>
 
+            )}
+
+            {task === "clustering" && (
+              <div className="mt-6 space-y-5 rounded-xl border border-slate-800 bg-slate-950/60 p-5">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-200">
+                    Clustering configuration
+                  </h3>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Automatic mode lets AutoML determine a suitable cluster count. Custom mode uses your requested count for compatible models.
+                  </p>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="cluster-count-mode"
+                    className="mb-2 block text-sm font-medium text-slate-300"
+                  >
+                    Cluster count mode
+                  </label>
+                  <select
+                    id="cluster-count-mode"
+                    value={clusterCountMode}
+                    onChange={(event) => {
+                      const nextMode =
+                        event.target
+                          .value as ClusterCountMode;
+                      setClusterCountMode(
+                        nextMode
+                      );
+
+                      if (
+                        nextMode ===
+                        "automatic"
+                      ) {
+                        setNumberOfClusters(
+                          ""
+                        );
+                      }
+                    }}
+                    disabled={loading}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-blue-500 disabled:opacity-50"
+                  >
+                    <option value="automatic">
+                      Automatic
+                    </option>
+                    <option value="custom">
+                      Custom
+                    </option>
+                  </select>
+                </div>
+
+                {clusterCountMode ===
+                  "custom" && (
+                  <div>
+                    <label
+                      htmlFor="number-of-clusters"
+                      className="mb-2 block text-sm font-medium text-slate-300"
+                    >
+                      Number of clusters
+                    </label>
+                    <input
+                      id="number-of-clusters"
+                      type="number"
+                      inputMode="numeric"
+                      step="1"
+                      min={
+                        clusteringLimits
+                          ?.minimum_number_of_clusters ??
+                        2
+                      }
+                      max={
+                        maximumCustomClusters ??
+                        undefined
+                      }
+                      value={numberOfClusters}
+                      onChange={(event) =>
+                        setNumberOfClusters(
+                          event.target.value
+                        )
+                      }
+                      disabled={loading}
+                      aria-invalid={
+                        !!clusteringValidationError
+                      }
+                      aria-describedby={
+                        clusteringValidationError
+                          ? "number-of-clusters-error"
+                          : "number-of-clusters-help"
+                      }
+                      className={`w-full rounded-xl border bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-blue-500 disabled:opacity-50 ${
+                        clusteringValidationError
+                          ? "border-red-500"
+                          : "border-slate-700"
+                      }`}
+                    />
+                    <p
+                      id="number-of-clusters-help"
+                      className="mt-2 text-xs text-slate-500"
+                    >
+                      {maximumCustomClusters !==
+                      null
+                        ? `Allowed range: ${
+                            clusteringLimits
+                              ?.minimum_number_of_clusters ??
+                            2
+                          } to ${maximumCustomClusters}.`
+                        : "Enter an integer of at least 2."}
+                    </p>
+                    {clusteringValidationError && (
+                      <p
+                        id="number-of-clusters-error"
+                        className="mt-2 text-xs text-red-300"
+                      >
+                        {clusteringValidationError}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4">
+                  <input
+                    type="checkbox"
+                    checked={
+                      requirePredictionSupport
+                    }
+                    onChange={(event) =>
+                      setRequirePredictionSupport(
+                        event.target.checked
+                      )
+                    }
+                    disabled={loading}
+                    className="mt-1 h-4 w-4 rounded border-slate-600 bg-slate-900 text-blue-600"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-slate-300">
+                      I want to assign new data to clusters after training
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-slate-500">
+                      Limits best-model selection to fitted models that can assign unseen rows.
+                    </span>
+                  </span>
+                </label>
+              </div>
             )}
 
             {/* =================================================
@@ -1422,6 +1742,65 @@ export default function AutoMLWorkspace() {
             </div>
 
           )}
+
+          {predictionTrainingResult
+            ?.task === "clustering" &&
+            predictionTrainingResult
+              .clustering && (
+              <section className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-6">
+                <p className="text-xs font-medium uppercase tracking-wider text-blue-400">
+                  Clustering Setup
+                </p>
+                <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <dt className="text-xs text-slate-500">
+                      Count mode
+                    </dt>
+                    <dd className="mt-1 capitalize text-slate-200">
+                      {
+                        predictionTrainingResult
+                          .clustering
+                          .cluster_count_mode
+                      }
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-500">
+                      Requested
+                    </dt>
+                    <dd className="mt-1 text-slate-200">
+                      {predictionTrainingResult
+                        .clustering
+                        .requested_number_of_clusters ??
+                        "Automatic"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-500">
+                      Effective
+                    </dt>
+                    <dd className="mt-1 text-slate-200">
+                      {predictionTrainingResult
+                        .clustering
+                        .effective_number_of_clusters ??
+                        "Model-derived"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-500">
+                      Future prediction
+                    </dt>
+                    <dd className="mt-1 text-slate-200">
+                      {predictionTrainingResult
+                        .clustering
+                        .prediction_supported
+                        ? "Supported"
+                        : "Unavailable"}
+                    </dd>
+                  </div>
+                </dl>
+              </section>
+            )}
 
           {predictionTrainingResult && (
             <BestModelPrediction

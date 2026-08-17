@@ -12,6 +12,7 @@ import type {
   DatasetInspectResponse,
   DatasetPreviewResponse,
   LeaderboardEntry,
+  ClusteringTrainingConfig,
 } from "@/types/automl";
 
 /* ============================================================
@@ -510,7 +511,8 @@ export default function useAutoML() {
     file: File,
     targetColumn?: string,
     task?: AutoMLTask,
-    optimizationMetric?: AutoMLOptimizationMetric
+    optimizationMetric?: AutoMLOptimizationMetric,
+    clusteringConfig?: ClusteringTrainingConfig
   ): Promise<AutoMLResult> {
     setLoading(true);
 
@@ -522,7 +524,8 @@ export default function useAutoML() {
           file,
           targetColumn,
           task,
-          optimizationMetric
+          optimizationMetric,
+          clusteringConfig
         );
 
       console.log(

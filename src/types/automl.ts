@@ -35,6 +35,39 @@ export type AutoMLOptimizationMetric =
   | RegressionMetric
   | ClusteringMetric;
 
+export type ClusterCountMode =
+  | "automatic"
+  | "custom";
+
+export interface ClusteringTrainingConfig {
+  cluster_count_mode: ClusterCountMode;
+  number_of_clusters: number | null;
+  require_prediction_support: boolean;
+}
+
+export interface ClusteringTrainingResult {
+  cluster_count_mode: ClusterCountMode;
+  requested_number_of_clusters: number | null;
+  effective_number_of_clusters: number | null;
+  require_prediction_support: boolean;
+  prediction_supported: boolean;
+}
+
+export interface ClusteringLimits {
+  minimum_number_of_clusters: number;
+  maximum_number_of_clusters: number;
+  default_cluster_count_mode: ClusterCountMode;
+  default_require_prediction_support: boolean;
+}
+
+export interface AutoMLInformation {
+  metadata?: {
+    clustering?: ClusteringLimits;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
 /* ============================================================
    DATASET
 ============================================================ */
@@ -173,6 +206,11 @@ export interface LeaderboardEntry {
 
   n_clusters?: number | null;
 
+  requested_number_of_clusters?: number | null;
+  effective_number_of_clusters?: number | null;
+  supports_custom_cluster_count?: boolean;
+  prediction_supported?: boolean;
+
   training_time?: number | null;
 
   error?: string | null;
@@ -215,6 +253,11 @@ export interface BestModel {
   silhouette_score?: number | null;
   calinski_harabasz_score?: number | null;
   davies_bouldin_score?: number | null;
+
+  requested_number_of_clusters?: number | null;
+  effective_number_of_clusters?: number | null;
+  supports_custom_cluster_count?: boolean;
+  prediction_supported?: boolean;
 
   explained_variance?: number | null;
 
@@ -267,6 +310,8 @@ export interface AutoMLResult {
 
   artifact?: AutoMLArtifact;
 
+  clustering?: ClusteringTrainingResult;
+
   skipped_algorithms?: string[];
 
   excluded_algorithms?: string[];
@@ -293,6 +338,8 @@ export interface AutoMLTrainRequest {
   task?: AutoMLTask;
 
   optimizationMetric?: AutoMLOptimizationMetric;
+
+  clusteringConfig?: ClusteringTrainingConfig;
 }
 
 /* ============================================================
@@ -335,6 +382,7 @@ export interface AutoMLPredictionResponse {
   predictions: PredictionValue[];
   classes?: PredictionValue[];
   probabilities?: number[][];
+  number_of_clusters?: number | null;
 
   [key: string]: unknown;
 }
