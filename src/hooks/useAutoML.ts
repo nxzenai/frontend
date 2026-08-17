@@ -7,11 +7,16 @@ import * as AutoMLService from "@/services/automl.service";
 import type {
   AutoMLResult,
   AutoMLTask,
+  AutoMLOptimizationMetric,
   BestModel,
   DatasetInspectResponse,
   DatasetPreviewResponse,
   LeaderboardEntry,
 } from "@/types/automl";
+
+/* ============================================================
+   HOOK
+============================================================ */
 
 export default function useAutoML() {
   const [loading, setLoading] =
@@ -50,16 +55,22 @@ export default function useAutoML() {
     useState<AutoMLResult | null>(null);
 
   /* ============================================================
-     ERROR
+     ERROR MESSAGE
   ============================================================ */
 
   function getErrorMessage(
     err: any
   ): string {
-    const detail =
-      err?.response?.data?.detail;
+    const responseData =
+      err?.response?.data;
 
-    if (typeof detail === "string") {
+    const detail =
+      responseData?.detail;
+
+    if (
+      typeof detail ===
+      "string"
+    ) {
       return detail;
     }
 
@@ -76,18 +87,30 @@ export default function useAutoML() {
     }
 
     if (
-      err?.response?.data?.message
+      responseData?.message
     ) {
       return String(
-        err.response.data.message
+        responseData.message
+      );
+    }
+
+    if (
+      responseData?.error
+    ) {
+      return String(
+        responseData.error
       );
     }
 
     if (err?.message) {
-      return String(err.message);
+      return String(
+        err.message
+      );
     }
 
-    return "An unexpected AutoML error occurred.";
+    return (
+      "An unexpected AutoML error occurred."
+    );
   }
 
   /* ============================================================
@@ -101,24 +124,31 @@ export default function useAutoML() {
       return [];
     }
 
+    /*
+     * Direct columns array.
+     */
     if (
-      Array.isArray(data.columns)
+      Array.isArray(
+        data.columns
+      )
     ) {
       return data.columns
-        .map((column: any) => {
-          if (
-            typeof column ===
-            "string"
-          ) {
-            return column;
-          }
+        .map(
+          (column: any) => {
+            if (
+              typeof column ===
+              "string"
+            ) {
+              return column;
+            }
 
-          return (
-            column?.name ??
-            column?.column ??
-            column?.column_name
-          );
-        })
+            return (
+              column?.name ??
+              column?.column ??
+              column?.column_name
+            );
+          }
+        )
         .filter(
           (
             column: any
@@ -128,6 +158,9 @@ export default function useAutoML() {
         );
     }
 
+    /*
+     * columns_info.
+     */
     if (
       data.columns_info &&
       typeof data.columns_info ===
@@ -138,6 +171,9 @@ export default function useAutoML() {
       );
     }
 
+    /*
+     * dataset_summary.columns_info.
+     */
     if (
       data.dataset_summary
         ?.columns_info
@@ -148,42 +184,66 @@ export default function useAutoML() {
       );
     }
 
-    if (
-      Array.isArray(
-        data.dataset_summary?.columns
-      )
-    ) {
-      return data.dataset_summary.columns;
-    }
+    /*
+     * IMPORTANT:
+     *
+     * dataset_summary.columns is a NUMBER.
+     *
+     * Never use it as column names.
+     */
 
-    if (data.dataset) {
+    /*
+     * Nested dataset.
+     */
+    if (
+      data.dataset
+    ) {
       const nested =
         extractColumns(
           data.dataset
         );
 
-      if (nested.length) {
+      if (
+        nested.length
+      ) {
         return nested;
       }
     }
 
-    if (data.data) {
+    /*
+     * Nested data.
+     */
+    if (
+      data.data &&
+      !Array.isArray(data.data)
+    ) {
       const nested =
         extractColumns(
           data.data
         );
 
-      if (nested.length) {
+      if (
+        nested.length
+      ) {
         return nested;
       }
     }
 
+    /*
+     * Derive from preview rows.
+     */
     const rows =
-      Array.isArray(data.preview)
+      Array.isArray(
+        data.preview
+      )
         ? data.preview
-        : Array.isArray(data.rows)
+        : Array.isArray(
+            data.rows
+          )
         ? data.rows
-        : Array.isArray(data.data)
+        : Array.isArray(
+            data.data
+          )
         ? data.data
         : [];
 
@@ -201,22 +261,103 @@ export default function useAutoML() {
   }
 
   /* ============================================================
+     NORMALIZE TRAINING SUMMARY
+  ============================================================ */
+
+  function updateDatasetInfoFromResult(
+    data: AutoMLResult
+  ) {
+    const summary =
+      data.dataset_summary;
+
+    if (!summary) {
+      return;
+    }
+
+    const columnsFromInfo =
+      summary.columns_info &&
+      typeof summary.columns_info ===
+        "object"
+        ? Object.keys(
+            summary.columns_info
+          )
+        : [];
+
+    /*
+     * IMPORTANT:
+     *
+     * Do NOT assign:
+     *
+     * columns: summary.columns
+     *
+     * because summary.columns is a number.
+     *
+     * DatasetInspectResponse.columns
+     * expects string[].
+     */
+
+    const normalized: DatasetInspectResponse =
+      {
+        task: data.task,
+
+        rows:
+          summary.rows,
+
+        memory_usage_bytes:
+          summary.memory_usage_bytes,
+
+        missing_values:
+          summary.missing_values,
+
+        target_column:
+          summary.target_column,
+
+        columns:
+          columnsFromInfo,
+
+        columns_info:
+          summary.columns_info,
+
+        dataset_summary:
+          summary,
+      };
+
+    setDatasetInfo(
+      normalized
+    );
+
+    if (
+      columnsFromInfo.length > 0
+    ) {
+      setDatasetColumns(
+        columnsFromInfo
+      );
+    }
+  }
+
+  /* ============================================================
      CLEAR
   ============================================================ */
 
   function clear() {
     setLoading(false);
+
     setInspecting(false);
+
     setError(null);
 
     setDatasetInfo(null);
+
     setDatasetPreview([]);
+
     setDatasetColumns([]);
 
     setLeaderboard([]);
+
     setBestModel(null);
 
     setStatistics(null);
+
     setRecommendations([]);
 
     setResult(null);
@@ -230,6 +371,7 @@ export default function useAutoML() {
     file: File
   ) {
     setInspecting(true);
+
     setError(null);
 
     try {
@@ -238,13 +380,19 @@ export default function useAutoML() {
           file
         );
 
-      setDatasetInfo(data);
+      setDatasetInfo(
+        data
+      );
 
       const columns =
         extractColumns(data);
 
-      if (columns.length > 0) {
-        setDatasetColumns(columns);
+      if (
+        columns.length > 0
+      ) {
+        setDatasetColumns(
+          columns
+        );
       }
 
       return data;
@@ -257,7 +405,9 @@ export default function useAutoML() {
         err
       );
 
-      setError(message);
+      setError(
+        message
+      );
 
       throw err;
     } finally {
@@ -280,38 +430,57 @@ export default function useAutoML() {
           file
         );
 
-      let rows: Record<
-        string,
-        any
-      >[] = [];
+      let rows:
+        Record<
+          string,
+          any
+        >[] = [];
 
       if (
         Array.isArray(data)
       ) {
-        rows = data;
+        rows =
+          data as any;
       } else if (
-        Array.isArray(data?.preview)
+        Array.isArray(
+          data?.preview
+        )
       ) {
-        rows = data.preview;
+        rows =
+          data.preview;
       } else if (
-        Array.isArray(data?.rows)
+        Array.isArray(
+          data?.rows
+        )
       ) {
-        rows = data.rows;
+        rows =
+          data.rows;
       } else if (
-        Array.isArray(data?.data)
+        Array.isArray(
+          data?.data
+        )
       ) {
-        rows = data.data;
+        rows =
+          data.data;
       }
 
-      setDatasetPreview(rows);
+      setDatasetPreview(
+        rows
+      );
 
+      /*
+       * Only derive columns if inspect
+       * didn't provide them.
+       */
       if (
         datasetColumns.length ===
           0 &&
         rows.length > 0
       ) {
         setDatasetColumns(
-          Object.keys(rows[0])
+          Object.keys(
+            rows[0]
+          )
         );
       }
 
@@ -320,7 +489,14 @@ export default function useAutoML() {
       const message =
         getErrorMessage(err);
 
-      setError(message);
+      console.error(
+        "AutoML preview failed:",
+        err
+      );
+
+      setError(
+        message
+      );
 
       throw err;
     }
@@ -333,31 +509,20 @@ export default function useAutoML() {
   async function train(
     file: File,
     targetColumn?: string,
-    task?: AutoMLTask
+    task?: AutoMLTask,
+    optimizationMetric?: AutoMLOptimizationMetric
   ): Promise<AutoMLResult> {
     setLoading(true);
+
     setError(null);
 
     try {
-      /*
-       * IMPORTANT:
-       *
-       * This calls:
-       *
-       * POST /api/v1/automl/train
-       *
-       * with multipart:
-       *
-       * file
-       * target_column
-       * task
-       */
-
       const data =
         await AutoMLService.trainFromFile(
           file,
           targetColumn,
-          task
+          task,
+          optimizationMetric
         );
 
       console.log(
@@ -365,7 +530,9 @@ export default function useAutoML() {
         data
       );
 
-      setResult(data);
+      setResult(
+        data
+      );
 
       setLeaderboard(
         Array.isArray(
@@ -394,43 +561,12 @@ export default function useAutoML() {
           : []
       );
 
-      if (data.dataset_summary) {
-  const summary = data.dataset_summary;
-
-  const columnsFromInfo =
-    summary.columns_info &&
-    typeof summary.columns_info === "object"
-      ? Object.keys(summary.columns_info)
-      : [];
-
-  setDatasetInfo({
-    task: data.task,
-
-    rows: summary.rows,
-
-    memory_usage_bytes:
-      summary.memory_usage_bytes,
-
-    missing_values:
-      summary.missing_values,
-
-    target_column:
-      summary.target_column,
-
-    columns:
-      columnsFromInfo,
-
-    columns_info:
-      summary.columns_info,
-
-    dataset_summary:
-      summary,
-  });
-
-  if (columnsFromInfo.length > 0) {
-    setDatasetColumns(columnsFromInfo);
-  }
-}
+      /*
+       * Safely normalize dataset summary.
+       */
+      updateDatasetInfoFromResult(
+        data
+      );
 
       return data;
     } catch (err) {
@@ -442,7 +578,9 @@ export default function useAutoML() {
         err
       );
 
-      setError(message);
+      setError(
+        message
+      );
 
       throw err;
     } finally {
@@ -456,25 +594,33 @@ export default function useAutoML() {
 
   return {
     loading,
+
     inspecting,
+
     error,
 
     result,
 
     datasetInfo,
+
     datasetPreview,
+
     datasetColumns,
 
     leaderboard,
+
     bestModel,
 
     statistics,
+
     recommendations,
 
     clear,
 
     inspect,
+
     preview,
+
     train,
   };
 }

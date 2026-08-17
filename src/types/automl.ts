@@ -6,18 +6,63 @@ export type AutoMLTask =
   | "anomaly"
   | "dimensionality";
 
+/* ============================================================
+   OPTIMIZATION METRICS
+============================================================ */
+
+export type ClassificationMetric =
+  | "f1_score"
+  | "accuracy"
+  | "precision"
+  | "recall"
+  | "roc_auc";
+
+export type RegressionMetric =
+  | "r2_score"
+  | "mae"
+  | "mse"
+  | "rmse"
+  | "mape"
+  | "explained_variance";
+
+export type ClusteringMetric =
+  | "silhouette_score"
+  | "calinski_harabasz_score"
+  | "davies_bouldin_score";
+
+export type AutoMLOptimizationMetric =
+  | ClassificationMetric
+  | RegressionMetric
+  | ClusteringMetric;
+
+/* ============================================================
+   DATASET
+============================================================ */
+
 export interface DatasetColumnInfo {
   dtype?: string;
   missing?: number;
   unique?: number;
+
   [key: string]: any;
 }
 
 export interface DatasetSummary {
+  /*
+   * IMPORTANT:
+   *
+   * This is the dataset summary returned by AutoML.
+   *
+   * columns = NUMBER of columns.
+   *
+   * Do NOT change this to string[].
+   */
   rows?: number;
   columns?: number;
+
   memory_usage_bytes?: number;
   missing_values?: number;
+
   target_column?: string | null;
 
   columns_info?: Record<
@@ -29,21 +74,35 @@ export interface DatasetSummary {
     dtype?: string;
     unique?: number;
     missing?: number;
+
     [key: string]: any;
   };
 
   [key: string]: any;
 }
 
+/* ============================================================
+   DATASET INSPECTION
+============================================================ */
+
 export interface DatasetInspectResponse {
   task?: string;
+
   dataset_summary?: DatasetSummary;
 
   rows?: number;
+
   memory_usage_bytes?: number;
+
   missing_values?: number;
+
   target_column?: string | null;
 
+  /*
+   * IMPORTANT:
+   *
+   * Inspect response columns = actual column names.
+   */
   columns?: string[];
 
   columns_info?: Record<
@@ -54,35 +113,53 @@ export interface DatasetInspectResponse {
   [key: string]: any;
 }
 
+/* ============================================================
+   DATASET PREVIEW
+============================================================ */
+
 export interface DatasetPreviewResponse {
   preview?: Record<string, any>[];
+
   rows?: Record<string, any>[];
+
   data?: Record<string, any>[];
 
   [key: string]: any;
 }
 
+/* ============================================================
+   LEADERBOARD
+============================================================ */
+
 export interface LeaderboardEntry {
   rank?: number;
 
+  /*
+   * Backend currently may send either.
+   */
   model?: string;
+
   model_name?: string;
 
   status?: string;
+
   success?: boolean;
 
+  /* Classification */
   accuracy?: number | null;
   precision?: number | null;
   recall?: number | null;
   f1_score?: number | null;
   roc_auc?: number | null;
 
+  /* Regression */
   r2_score?: number | null;
   mae?: number | null;
   mse?: number | null;
   rmse?: number | null;
   mape?: number | null;
 
+  /* Clustering */
   silhouette_score?: number | null;
   calinski_harabasz_score?: number | null;
   davies_bouldin_score?: number | null;
@@ -94,10 +171,15 @@ export interface LeaderboardEntry {
   training_time?: number | null;
 
   error?: string | null;
+
   skip_reason?: string | null;
 
   [key: string]: any;
 }
+
+/* ============================================================
+   BEST MODEL
+============================================================ */
 
 export interface BestModel {
   available?: boolean;
@@ -110,38 +192,58 @@ export interface BestModel {
 
   success?: boolean;
 
+  /* Classification */
   accuracy?: number | null;
   precision?: number | null;
   recall?: number | null;
   f1_score?: number | null;
   roc_auc?: number | null;
 
+  /* Regression */
   r2_score?: number | null;
   mae?: number | null;
   mse?: number | null;
   rmse?: number | null;
   mape?: number | null;
 
+  /* Clustering */
   silhouette_score?: number | null;
   calinski_harabasz_score?: number | null;
   davies_bouldin_score?: number | null;
 
+  explained_variance?: number | null;
+
   [key: string]: any;
 }
+
+/* ============================================================
+   STATISTICS
+============================================================ */
 
 export interface AutoMLStatistics {
   task?: string;
 
   models_trained?: number;
+
   successful_models?: number;
+
   failed_models?: number;
 
   best_model?: string;
 
   artifact_available?: boolean;
 
+  /*
+   * Future backend support.
+   */
+  optimization_metric?: AutoMLOptimizationMetric | string;
+
   [key: string]: any;
 }
+
+/* ============================================================
+   RESULT
+============================================================ */
 
 export interface AutoMLResult {
   task: string;
@@ -160,17 +262,33 @@ export interface AutoMLResult {
 
   artifact?: {
     available?: boolean;
+
     model_name?: string;
+
     artifact_version?: string;
+
     task?: string;
+
     [key: string]: any;
   };
 
   skipped_algorithms?: string[];
+
   excluded_algorithms?: string[];
+
+  /*
+   * Future/backend metric support.
+   */
+  optimization_metric?: AutoMLOptimizationMetric | string;
+
+  selected_metric?: AutoMLOptimizationMetric | string;
 
   [key: string]: any;
 }
+
+/* ============================================================
+   TRAIN REQUEST
+============================================================ */
 
 export interface AutoMLTrainRequest {
   file: File;
@@ -178,4 +296,6 @@ export interface AutoMLTrainRequest {
   targetColumn?: string;
 
   task?: AutoMLTask;
+
+  optimizationMetric?: AutoMLOptimizationMetric;
 }
