@@ -7,8 +7,10 @@ import {
 } from "react";
 
 import useAutoML from "@/hooks/useAutoML";
+import BestModelPrediction from "@/components/automl/BestModelPrediction";
 
 import type {
+  AutoMLResult,
   AutoMLTask,
   AutoMLOptimizationMetric,
   LeaderboardEntry,
@@ -513,6 +515,13 @@ export default function AutoMLWorkspace() {
   ] =
     useState("");
 
+  const [
+    predictionTrainingResult,
+    setPredictionTrainingResult,
+  ] = useState<AutoMLResult | null>(
+    null
+  );
+
   /*
    * User-selectable optimization metric.
    */
@@ -589,6 +598,10 @@ export default function AutoMLWorkspace() {
 
     setTargetColumn("");
 
+    setPredictionTrainingResult(
+      null
+    );
+
     /*
      * Reset metric to the correct
      * default for the current task.
@@ -659,8 +672,13 @@ export default function AutoMLWorkspace() {
       return;
     }
 
+    setPredictionTrainingResult(
+      null
+    );
+
     try {
-      await train(
+      const trainingResult =
+        await train(
         file,
 
         task ===
@@ -671,6 +689,10 @@ export default function AutoMLWorkspace() {
         task,
 
         optimizationMetric
+      );
+
+      setPredictionTrainingResult(
+        trainingResult
       );
     } catch {
       /*
@@ -735,6 +757,10 @@ export default function AutoMLWorkspace() {
                 setFile(null);
 
                 setTargetColumn("");
+
+                setPredictionTrainingResult(
+                  null
+                );
 
                 setOptimizationMetric(
                   defaultMetricForTask(
@@ -1395,6 +1421,20 @@ export default function AutoMLWorkspace() {
 
             </div>
 
+          )}
+
+          {predictionTrainingResult && (
+            <BestModelPrediction
+              key={
+                predictionTrainingResult
+                  .artifact
+                  ?.model_filename ??
+                "unavailable-artifact"
+              }
+              trainingResult={
+                predictionTrainingResult
+              }
+            />
           )}
 
           {/* ==================================================
