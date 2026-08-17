@@ -1,32 +1,9 @@
-import api from "@/lib/studioApi";
+import apiClient from './apiClient';
+import { ChatRequest, ChatResponse } from '../types/genai';
 
-import {
-    ChatRequest,
-    ChatResponse,
-} from "@/types/genai";
-
-class GenAIService {
-
-    ////////////////////////////////////////////
-    // Create Chat Completion
-    ////////////////////////////////////////////
-
-    async createChatCompletion(
-
-        request: ChatRequest,
-
-    ): Promise<ChatResponse> {
-
-        const response =
-            await api.post<ChatResponse>(
-                "/genai/chat",
-                request,
-            );
-
-        return response.data;
-
-    }
-
-}
-
-export default new GenAIService();
+export const genaiService = {
+  createChatCompletion: async (request: ChatRequest): Promise<ChatResponse> => {
+    const response = await apiClient.post<ChatResponse>('/genai/chat', request);
+    return response.data;
+  },
+};
