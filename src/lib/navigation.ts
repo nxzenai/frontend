@@ -20,7 +20,7 @@ export interface NavigationItem {
   | "dashboard"
   | "python_lab"
   | "sql_lab"
-  | "datasets"
+  | "eda"
   | "automl"
   | "autodl"
   | "autonlp"
@@ -64,10 +64,10 @@ export const NAVIGATION: NavigationItem[] = [
 
 
   {
-  title: "Datasets",
-  href: "/datasets",
+  title: "EDA Hub",
+  href: "/eda",
   icon: Database,
-  permission: "datasets",
+  permission: "eda",
   section: "labs",
 },
 

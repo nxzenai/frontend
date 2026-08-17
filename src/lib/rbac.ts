@@ -26,7 +26,7 @@ export const PERMISSIONS = {
     "super_admin",
   ],
 
-  datasets: [
+  eda: [
     "user",
     "instructor",
     "admin",

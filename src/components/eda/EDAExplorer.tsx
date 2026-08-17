@@ -1,0 +1,19 @@
+"use client";
+import { ChevronLeft, ChevronRight, Database, RefreshCw, Search, Trash2 } from "lucide-react";
+import type { EDAList, EDAProject } from "@/types/eda";
+
+const size = (bytes: number) => bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+export default function EDAExplorer({ catalog, selected, search, loading, onSearch, onPage, onRefresh, onSelect, onDelete }: { catalog: EDAList; selected: EDAProject | null; search: string; loading: boolean; onSearch: (value: string) => void; onPage: (page: number) => void; onRefresh: () => void; onSelect: (project: EDAProject) => void; onDelete: (project: EDAProject) => void; }) {
+  return <section aria-label="EDA project catalog" className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+    <div className="flex items-center justify-between border-b border-slate-800 p-4"><div><h2 className="font-semibold text-white">EDA projects</h2><p className="text-xs text-slate-400">{catalog.total} project{catalog.total === 1 ? "" : "s"}</p></div><button type="button" aria-label="Refresh projects" onClick={onRefresh} disabled={loading} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800"><RefreshCw size={18} className={loading ? "animate-spin" : ""} /></button></div>
+    <label className="m-4 flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2"><Search size={17} className="text-slate-500" /><span className="sr-only">Search projects</span><input value={search} onChange={(event) => onSearch(event.target.value)} placeholder="Search original filename" className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none" /></label>
+    <div className="max-h-[590px] space-y-2 overflow-y-auto px-3 pb-3">
+      {!loading && catalog.items.length === 0 && <div className="py-12 text-center text-sm text-slate-400"><Database className="mx-auto mb-3 text-slate-600" />{search ? "No matching EDA projects." : "Upload data to create your first EDA project."}</div>}
+      {catalog.items.map((project) => <article key={project.id} className={`rounded-xl border p-3 ${selected?.id === project.id ? "border-blue-500 bg-blue-500/10" : "border-slate-800 bg-slate-950"}`}>
+        <button type="button" onClick={() => onSelect(project)} className="w-full text-left"><p className="truncate font-medium text-white" title={project.original_filename}>{project.original_filename}</p><div className="mt-2 grid grid-cols-2 gap-1 text-xs text-slate-400"><span>{project.extension.slice(1).toUpperCase()}</span><span>{new Date(project.created_at).toLocaleDateString()}</span><span>{project.rows.toLocaleString()} rows</span><span>{project.columns} columns</span><span>{size(project.size)}</span><span>{project.missing_values.toLocaleString()} missing</span></div></button>
+        <div className="mt-2 flex items-center justify-between"><span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-300">{project.analysis_status}</span><button type="button" aria-label={`Delete ${project.original_filename}`} onClick={() => onDelete(project)} className="rounded-lg p-2 text-slate-400 hover:bg-red-500/10 hover:text-red-300"><Trash2 size={16} /></button></div>
+      </article>)}
+    </div>
+    <div className="flex items-center justify-between border-t border-slate-800 p-3 text-sm text-slate-400"><button type="button" disabled={catalog.page <= 1} onClick={() => onPage(catalog.page - 1)} className="rounded-lg p-2 disabled:opacity-30"><ChevronLeft size={18} /></button><span>Page {catalog.pages ? catalog.page : 0} of {catalog.pages}</span><button type="button" disabled={catalog.page >= catalog.pages} onClick={() => onPage(catalog.page + 1)} className="rounded-lg p-2 disabled:opacity-30"><ChevronRight size={18} /></button></div>
+  </section>;
+}
