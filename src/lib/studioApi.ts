@@ -1,10 +1,10 @@
 import axios from "axios";
+import { validateStudioApiUrl } from "./studioApiConfig";
 
-const studioApiUrl = process.env.NEXT_PUBLIC_STUDIO_API_URL;
-
-if (!studioApiUrl) {
-  throw new Error("NEXT_PUBLIC_STUDIO_API_URL is not configured.");
-}
+const studioApiUrl = validateStudioApiUrl(
+  process.env.NEXT_PUBLIC_STUDIO_API_URL,
+  process.env.NODE_ENV === "production",
+);
 
 const studioApi = axios.create({
   baseURL: studioApiUrl,

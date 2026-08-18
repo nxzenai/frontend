@@ -3,7 +3,7 @@
 import useNotebookEditor from "@/hooks/useNotebookEditor";
 
 export default function NotebookStatusBar() {
-  const { kernelStatus, saving } = useNotebookEditor();
+  const { kernelStatus, saving, saveStatus } = useNotebookEditor();
 
   return (
     <footer className="border-t border-slate-800 bg-[#0B1220]">
@@ -14,7 +14,7 @@ export default function NotebookStatusBar() {
             {kernelStatus}
           </span>
         </div>
-        <div aria-live="polite">{saving ? "Working..." : "Autosave Enabled"}</div>
+        <div aria-live="polite">{saving ? "Working..." : saveStatus === "saving" ? "Saving..." : saveStatus === "error" ? "Save failed" : "Saved"}</div>
       </div>
     </footer>
   );
