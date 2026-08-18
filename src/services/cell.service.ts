@@ -34,9 +34,6 @@ class CellService {
         `/notebooks/${notebookId}/cells`,
       );
 
-    console.log("========== CELLS ==========");
-    console.log(response.data.data);
-
     return response.data.data;
   }
 
@@ -101,10 +98,22 @@ class CellService {
         `/notebooks/${notebookId}/cells/${cellId}/execute`,
       );
 
-    console.log("========== EXECUTE ==========");
-    console.log(response.data);
-
     return response.data;
+  }
+
+  async executeAll(notebookId: string): Promise<{ notebook_id: string; results: ExecuteCellResponse[] }> {
+    const response = await api.post<{ notebook_id: string; results: ExecuteCellResponse[] }>(
+      `/notebooks/${notebookId}/execute-all`,
+    );
+    return response.data;
+  }
+
+  async clearOutputs(notebookId: string, cellId: string): Promise<void> {
+    await api.post(`/notebooks/${notebookId}/cells/${cellId}/clear`);
+  }
+
+  async clearAllOutputs(notebookId: string): Promise<void> {
+    await api.post(`/notebooks/${notebookId}/outputs/clear`);
   }
 
   ////////////////////////////////////////////////////////

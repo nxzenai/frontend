@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import useAuth from "@/hooks/useAuth";
+import { resolveProtectedRouteState } from "./protectedRouteState";
 
 interface Props {
   children: React.ReactNode;
@@ -13,14 +14,15 @@ export default function ProtectedRoute({
 }: Props) {
   const { loading, user } = useAuth();
   const router = useRouter();
+  const state = resolveProtectedRouteState(loading, Boolean(user));
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (state === "redirect") {
       router.replace("/login");
     }
-  }, [loading, user, router]);
+  }, [state, router]);
 
-  if (loading) {
+  if (state === "loading") {
     return (
       <div className="flex h-screen items-center justify-center">
         Loading...
@@ -28,7 +30,7 @@ export default function ProtectedRoute({
     );
   }
 
-  if (!user) return null;
+  if (state === "redirect") return null;
 
   return <>{children}</>;
 }

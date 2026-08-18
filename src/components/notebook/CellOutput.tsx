@@ -1,8 +1,7 @@
 "use client";
 
-import DOMPurify from "dompurify";
-
 import type { CellOutputValue, RichOutputContent } from "@/types/cell";
+import { sanitizeNotebookHtml } from "@/utils/sanitizeNotebookHtml";
 
 interface Props {
   outputs: CellOutputValue[];
@@ -20,15 +19,6 @@ function dataString(content: RichOutputContent, mime: string): string | null {
     return value.join("");
   }
   return null;
-}
-
-function safeHtmlDocument(html: string): string {
-  const sanitized = DOMPurify.sanitize(html, {
-    FORBID_TAGS: ["script", "iframe", "object", "embed", "link", "meta", "base", "form"],
-    FORBID_ATTR: ["srcdoc"],
-  });
-
-  return `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'"><style>body{font-family:system-ui,sans-serif;color:#111;margin:0}table{border-collapse:collapse}th,td{border:1px solid #d1d5db;padding:.4rem}</style></head><body>${sanitized}</body></html>`;
 }
 
 export default function CellOutput({ outputs, executionCount }: Props) {
@@ -79,7 +69,7 @@ export default function CellOutput({ outputs, executionCount }: Props) {
                 key={index}
                 title={`Notebook HTML output ${index + 1}`}
                 sandbox=""
-                srcDoc={safeHtmlDocument(html)}
+                srcDoc={sanitizeNotebookHtml(html)}
                 className="min-h-32 w-full rounded-lg border border-slate-300 bg-white p-4"
               />
             );
