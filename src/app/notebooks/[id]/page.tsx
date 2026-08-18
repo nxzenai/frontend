@@ -1,4 +1,5 @@
 import NotebookEditor from "@/components/notebook/NotebookEditor";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { NotebookEditorProvider } from "@/contexts/NotebookEditorContext";
 
 export default async function NotebookPage({
@@ -9,9 +10,10 @@ export default async function NotebookPage({
   const { id } = await params;
 
   return (
-    <NotebookEditorProvider notebookId={id}>
-      <NotebookEditor />
-      
-    </NotebookEditorProvider>
+    <ProtectedRoute>
+      <NotebookEditorProvider notebookId={id}>
+        <NotebookEditor />
+      </NotebookEditorProvider>
+    </ProtectedRoute>
   );
 }

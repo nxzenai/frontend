@@ -8,7 +8,7 @@ import NotebookStatusBar from "./NotebookStatusBar";
 import CellList from "./CellList";
 
 export default function NotebookEditor() {
-  const { notebook, loading } = useNotebookEditor();
+  const { notebook, loading, error } = useNotebookEditor();
 
   if (loading) {
     return (
@@ -46,6 +46,15 @@ export default function NotebookEditor() {
 
       {/* Toolbar */}
       <NotebookToolbar />
+
+      {error && (
+        <div
+          role="alert"
+          className="border-b border-red-800 bg-red-950/60 px-8 py-3 text-sm text-red-200"
+        >
+          {error}
+        </div>
+      )}
 
       {/* Notebook Workspace */}
       <main className="flex-1 overflow-y-auto">

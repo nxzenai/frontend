@@ -23,6 +23,7 @@ export default function CodeCell({
     updateCell,
     executeCell,
     focusNextCell,
+    setCells,
   } = useNotebookEditor();
 
   const [code, setCode] = useState(
@@ -31,14 +32,6 @@ export default function CodeCell({
 
   const debounceTimer =
     useRef<NodeJS.Timeout | null>(null);
-
-  //////////////////////////////////////////////////////
-  // Sync editor with backend updates
-  //////////////////////////////////////////////////////
-
-  useEffect(() => {
-    setCode(cell.source);
-  }, [cell.source]);
 
   //////////////////////////////////////////////////////
   // Autosave (500ms debounce)
@@ -50,6 +43,9 @@ export default function CodeCell({
     const value = e.target.value;
 
     setCode(value);
+    setCells((cells) => cells.map((current) =>
+      current.id === cell.id ? { ...current, source: value } : current
+    ));
 
     if (debounceTimer.current) {
       clearTimeout(
@@ -65,6 +61,10 @@ export default function CodeCell({
         );
       }, 500);
   }
+
+  useEffect(() => () => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+  }, []);
 
   //////////////////////////////////////////////////////
   // Shift + Enter
