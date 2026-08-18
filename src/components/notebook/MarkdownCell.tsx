@@ -40,7 +40,7 @@ export default function MarkdownCell({
     }
 
     timer.current = setTimeout(() => {
-      updateCell(cell.id, value);
+      void updateCell(cell.id, value).catch(() => undefined);
     }, 500);
 
   }

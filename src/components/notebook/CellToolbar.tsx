@@ -4,18 +4,21 @@ import {
   Play,
   Trash2,
   Copy,
+  Eraser,
 } from "lucide-react";
 
 interface CellToolbarProps {
   onRun?: () => void;
   onDelete?: () => void;
   onDuplicate?: () => void;
+  onClear?: () => void;
 }
 
 export default function CellToolbar({
   onRun,
   onDelete,
   onDuplicate,
+  onClear,
 }: CellToolbarProps) {
   return (
     <div className="flex items-center gap-2">
@@ -30,6 +33,12 @@ export default function CellToolbar({
           className="text-green-400"
         />
       </button>
+
+      {onClear && (
+        <button onClick={onClear} className="rounded-md p-2 transition hover:bg-slate-700" title="Clear Output">
+          <Eraser size={18} className="text-slate-300" />
+        </button>
+      )}
 
       <button
         onClick={onDuplicate}

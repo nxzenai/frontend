@@ -11,6 +11,7 @@ import { Cell } from "@/types/cell";
 import { useNotebookEditor } from "@/contexts/NotebookEditorContext";
 
 import CellOutput from "./CellOutput";
+import { persistThenRun } from "@/utils/notebookExecution";
 
 interface CodeCellProps {
   cell: Cell;
@@ -55,10 +56,7 @@ export default function CodeCell({
 
     debounceTimer.current =
       setTimeout(() => {
-        updateCell(
-          cell.id,
-          value
-        );
+        void updateCell(cell.id, value).catch(() => undefined);
       }, 500);
   }
 
@@ -85,14 +83,7 @@ export default function CodeCell({
         );
       }
 
-      await updateCell(
-        cell.id,
-        code
-      );
-
-      await executeCell(
-        cell.id
-      );
+      await persistThenRun(cell.id, code, updateCell, executeCell);
 
       focusNextCell(
         cell.id

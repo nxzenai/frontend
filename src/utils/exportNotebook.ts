@@ -13,11 +13,11 @@ function download(filename: string, content: string, mime: string) {
   URL.revokeObjectURL(url);
 }
 
-function safeFilename(title: string): string {
+export function safeFilename(title: string): string {
   return title.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_").trim() || "notebook";
 }
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => ({
     "&": "&amp;",
     "<": "&lt;",
@@ -103,7 +103,7 @@ export function exportMarkdown(notebook: Notebook, cells: Cell[]) {
   download(`${safeFilename(notebook.title)}.md`, markdown, "text/markdown");
 }
 
-export function exportHTML(notebook: Notebook, cells: Cell[]) {
+export function buildHTML(notebook: Notebook, cells: Cell[]): string {
   const body = cells.map((cell) => {
     if (cell.cell_type === "markdown") {
       return `<p>${escapeHtml(cell.source).replaceAll("\n", "<br>")}</p>`;
@@ -112,17 +112,27 @@ export function exportHTML(notebook: Notebook, cells: Cell[]) {
     return `<pre>${escapeHtml(cell.source)}</pre>${outputs ? `<div class="output">${outputs}</div>` : ""}`;
   }).join("");
 
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(notebook.title)}</title><style>body{font-family:Arial,sans-serif;padding:40px;background:#fafafa}pre{background:#222;color:#fff;padding:15px;border-radius:8px;overflow:auto}.output{background:#eee;padding:15px;margin-bottom:20px}</style></head><body><h1>${escapeHtml(notebook.title)}</h1>${body}</body></html>`;
-  download(`${safeFilename(notebook.title)}.html`, html, "text/html");
+  const description = notebook.description ? `<p>${escapeHtml(notebook.description)}</p>` : "";
+  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>${escapeHtml(notebook.title)}</title><style>body{font-family:Arial,sans-serif;padding:40px;background:#fafafa}pre{background:#222;color:#fff;padding:15px;border-radius:8px;overflow:auto}.output{background:#eee;padding:15px;margin-bottom:20px}</style></head><body><h1>${escapeHtml(notebook.title)}</h1>${description}${body}</body></html>`;
 }
 
-export function exportIPYNB(notebook: Notebook, cells: Cell[]) {
-  const ipynb = {
-    cells: cells.map((cell) => cell.cell_type === "markdown" ? {
+export function exportHTML(notebook: Notebook, cells: Cell[]) {
+  download(`${safeFilename(notebook.title)}.html`, buildHTML(notebook, cells), "text/html");
+}
+
+function jupyterCellId(value: string, index: number): string {
+  return value.replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 64) || `cell-${index + 1}`;
+}
+
+export function buildIPYNB(notebook: Notebook, cells: Cell[]) {
+  return {
+    cells: cells.map((cell, index) => cell.cell_type === "markdown" ? {
+      id: jupyterCellId(cell.id, index),
       cell_type: "markdown",
       metadata: cell.metadata ?? {},
       source: cell.source,
     } : {
+      id: jupyterCellId(cell.id, index),
       cell_type: "code",
       metadata: cell.metadata ?? {},
       source: cell.source,
@@ -136,5 +146,8 @@ export function exportIPYNB(notebook: Notebook, cells: Cell[]) {
     nbformat: 4,
     nbformat_minor: 5,
   };
-  download(`${safeFilename(notebook.title)}.ipynb`, JSON.stringify(ipynb, null, 2), "application/x-ipynb+json");
+}
+
+export function exportIPYNB(notebook: Notebook, cells: Cell[]) {
+  download(`${safeFilename(notebook.title)}.ipynb`, JSON.stringify(buildIPYNB(notebook, cells), null, 2), "application/x-ipynb+json");
 }

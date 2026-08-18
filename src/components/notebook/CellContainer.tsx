@@ -6,6 +6,7 @@ import { Cell } from "@/types/cell";
 import { useNotebookEditor } from "@/contexts/NotebookEditorContext";
 
 import CellToolbar from "./CellToolbar";
+import { persistThenRun } from "@/utils/notebookExecution";
 
 interface Props {
   cell: Cell;
@@ -21,18 +22,14 @@ export default function CellContainer({
     deleteCell,
     duplicateCell,
     updateCell,
+    clearCellOutputs,
   } = useNotebookEditor();
 
   /**
    * Execute Cell
    */
   async function handleRun() {
-  await updateCell(
-    cell.id,
-    cell.source
-  );
-
-  await executeCell(cell.id);
+    await persistThenRun(cell.id, cell.source, updateCell, executeCell);
 }
 
   /**
@@ -86,6 +83,7 @@ export default function CellContainer({
           onRun={handleRun}
           onDelete={handleDelete}
           onDuplicate={handleDuplicate}
+          onClear={cell.cell_type === "code" ? () => clearCellOutputs(cell.id) : undefined}
         />
       </div>
 
