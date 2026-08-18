@@ -56,7 +56,7 @@ export const NAVIGATION: NavigationItem[] = [
 
   {
     title: "Python Lab",
-    href: "/dashboard",
+    href: "/python-lab",
     icon: Code2,
     permission: "python_lab",
     section: "labs",
