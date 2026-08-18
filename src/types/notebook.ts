@@ -2,7 +2,7 @@ export interface Notebook {
   id: string;
   owner_id: string;
   title: string;
-  description: string;
+  description: string | null;
   visibility: "private" | "public";
   tags: string[];
   execution_count: number;
@@ -18,14 +18,14 @@ export interface NotebookResponse {
 
 export interface CreateNotebookRequest {
   title: string;
-  description: string;
+  description?: string | null;
   visibility: "private" | "public";
   tags: string[];
 }
 
 export interface UpdateNotebookRequest {
   title?: string;
-  description?: string;
+  description?: string | null;
   visibility?: "private" | "public";
   tags?: string[];
 }

@@ -7,6 +7,7 @@ import type {
   CreateCellRequest,
   UpdateCellRequest,
   ReorderCellsRequest,
+  CellOutputValue,
 } from "@/types/cell";
 
 //////////////////////////////////////////////////////////
@@ -17,7 +18,7 @@ export interface ExecuteCellResponse {
   notebook_id: string;
   cell_id: string;
   execution_count: number;
-  outputs: any[];
+  outputs: CellOutputValue[];
 }
 
 class CellService {
@@ -178,4 +179,6 @@ class CellService {
   }
 }
 
-export default new CellService();
+const cellService = new CellService();
+
+export default cellService;

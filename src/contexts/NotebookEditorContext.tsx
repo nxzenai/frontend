@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   ReactNode,
 } from "react";
@@ -22,6 +23,7 @@ interface NotebookEditorContextType {
   saving: boolean;
 
   error: string | null;
+  kernelStatus: string;
 
   activeCellId: string | null;
   selectedCellId: string | null;
@@ -88,11 +90,15 @@ export function NotebookEditorProvider({
   const [error, setError] =
     useState<string | null>(null);
 
+  const [kernelStatus, setKernelStatus] = useState("stopped");
+
   const [activeCellId, setActiveCellId] =
     useState<string | null>(null);
 
   const [selectedCellId, setSelectedCellId] =
     useState<string | null>(null);
+
+  const saveQueues = useRef(new Map<string, Promise<void>>());
 
   //////////////////////////////////////////////////////
   // NOTEBOOK
@@ -109,9 +115,12 @@ export function NotebookEditorProvider({
       const notebookCells =
         await cellService.list(id);
 
+      const runtime = await cellService.kernelStatus(id);
+
       setNotebook(notebookData);
 
       setCells(notebookCells);
+      setKernelStatus(runtime.status);
 
       if (notebookCells.length > 0) {
         setActiveCellId(notebookCells[0].id);
@@ -202,6 +211,7 @@ async function executeCell(cellId: string) {
 
     setSaving(true);
     setError(null);
+    setKernelStatus("busy");
 
     // Execute the cell
     await cellService.execute(
@@ -211,6 +221,9 @@ async function executeCell(cellId: string) {
 
     // Reload cells from backend
     const latestCells = await refreshCells();
+
+    const runtime = await cellService.kernelStatus(notebook.id);
+    setKernelStatus(runtime.status);
 
     // Preserve selection
     const current = latestCells.find(
@@ -227,6 +240,7 @@ async function executeCell(cellId: string) {
     console.error(err);
 
     setError("Failed to execute cell.");
+    setKernelStatus("failed");
 
   } finally {
 
@@ -336,25 +350,32 @@ async function updateCell(
 ) {
   if (!notebook) return;
 
-  try {
-    const updatedCell = await cellService.update(
-      notebook.id,
-      cellId,
-      {
-        source,
-      }
-    );
-
-    setCells((prev) =>
-      prev.map((cell) =>
+  const previous = saveQueues.current.get(cellId) ?? Promise.resolve();
+  const current = previous
+    .catch(() => undefined)
+    .then(async () => {
+      const updatedCell = await cellService.update(notebook.id, cellId, { source });
+      setCells((existing) => existing.map((cell) =>
         cell.id === cellId
-          ? updatedCell
+          ? {
+              ...updatedCell,
+              source: cell.source === source ? updatedCell.source : cell.source,
+            }
           : cell
-      )
-    );
+      ));
+    });
+
+  saveQueues.current.set(cellId, current);
+
+  try {
+    await current;
   } catch (err) {
     console.error(err);
-    setError("Unable to update cell.");
+    setError("Unable to update cell. Your latest changes may not be saved.");
+  } finally {
+    if (saveQueues.current.get(cellId) === current) {
+      saveQueues.current.delete(cellId);
+    }
   }
 }
 
@@ -388,8 +409,11 @@ async function runAllCells() {
 
   try {
     setSaving(true);
+    setKernelStatus("busy");
 
-    // Always execute latest cells
+    // Persist the in-memory drafts before asking the backend to execute them.
+    const drafts = [...cells].sort((left, right) => left.position - right.position);
+    await Promise.all(drafts.map((cell) => updateCell(cell.id, cell.source)));
     const latestCells = await refreshCells();
 
     for (const cell of latestCells) {
@@ -403,10 +427,14 @@ async function runAllCells() {
       // refresh output after every execution
       await refreshCells();
     }
+
+    const runtime = await cellService.kernelStatus(notebook.id);
+    setKernelStatus(runtime.status);
   } catch (err) {
     console.error(err);
 
     setError("Failed to run notebook.");
+    setKernelStatus("failed");
   } finally {
     setSaving(false);
   }
@@ -424,9 +452,13 @@ async function restartKernel() {
       notebook.id
     );
 
+    setKernelStatus("idle");
+
     alert("Kernel restarted.");
   } catch (err) {
     console.error(err);
+    setError("Unable to restart the kernel.");
+    setKernelStatus("failed");
   }
 }
 
@@ -442,9 +474,13 @@ async function interruptKernel() {
       notebook.id
     );
 
+    setKernelStatus("idle");
+
     alert("Execution interrupted.");
   } catch (err) {
     console.error(err);
+    setError("Unable to interrupt the kernel.");
+    setKernelStatus("failed");
   }
 }
 
@@ -453,7 +489,11 @@ async function interruptKernel() {
   //////////////////////////////////////////////////////
 
   useEffect(() => {
-    loadNotebook(notebookId);
+    const timer = window.setTimeout(() => {
+      void loadNotebook(notebookId);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [notebookId]);
   //////////////////////////////////////////////////////
   // PROVIDER
@@ -470,6 +510,7 @@ async function interruptKernel() {
         saving,
 
         error,
+        kernelStatus,
 
         activeCellId,
         selectedCellId,

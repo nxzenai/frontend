@@ -4,7 +4,6 @@ import {
   Play,
   Trash2,
   Copy,
-  MoreHorizontal,
 } from "lucide-react";
 
 interface CellToolbarProps {
@@ -51,15 +50,6 @@ export default function CellToolbar({
         <Trash2
           size={18}
           className="text-red-400"
-        />
-      </button>
-
-      <button
-        className="rounded-md p-2 transition hover:bg-slate-700"
-      >
-        <MoreHorizontal
-          size={18}
-          className="text-slate-300"
         />
       </button>
 

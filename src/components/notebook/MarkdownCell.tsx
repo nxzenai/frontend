@@ -18,15 +18,11 @@ export default function MarkdownCell({
   cell,
 }: Props) {
 
-  const { updateCell } = useNotebookEditor();
+  const { updateCell, setCells } = useNotebookEditor();
 
   const [text, setText] = useState(cell.source);
 
   const timer = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    setText(cell.source);
-  }, [cell.source]);
 
   function handleChange(
     e: React.ChangeEvent<HTMLTextAreaElement>
@@ -35,6 +31,9 @@ export default function MarkdownCell({
     const value = e.target.value;
 
     setText(value);
+    setCells((cells) => cells.map((current) =>
+      current.id === cell.id ? { ...current, source: value } : current
+    ));
 
     if (timer.current) {
       clearTimeout(timer.current);
@@ -45,6 +44,10 @@ export default function MarkdownCell({
     }, 500);
 
   }
+
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
 
   return (
     <div className="overflow-hidden rounded-lg border border-slate-700 bg-[#0F172A]">
