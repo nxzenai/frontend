@@ -9,11 +9,12 @@ import {
     AutoNLPJobResponse,
 } from "@/types/autonlp";
 
+
 export default function useAutoNLPJob() {
 
-    //////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////
     // State
-    //////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////
 
     const [job, setJob] =
         useState<AutoNLPJobResponse | null>(null);
@@ -24,57 +25,128 @@ export default function useAutoNLPJob() {
     const [error, setError] =
         useState<string | null>(null);
 
-    //////////////////////////////////////////////////////////
+
+    ////////////////////////////////////////////////////////////
     // Start Training
-    //////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////
 
     const startTraining =
-        useCallback(async (
+        useCallback(
+            async (
+                request: AutoNLPJobCreateRequest,
+            ) => {
 
-            request: AutoNLPJobCreateRequest,
+                try {
 
-        ) => {
+                    setLoading(true);
 
-            try {
+                    setError(null);
 
-                setLoading(true);
+                    setJob(null);
 
-                setError(null);
 
-                const newJob =
-                    await AutoNLPService.startJob(
-                        request
+                    ////////////////////////////////////////////////////
+                    // Start Backend Job
+                    ////////////////////////////////////////////////////
+
+                    const newJob =
+                        await AutoNLPService.startJob(
+                            request,
+                        );
+
+
+                    ////////////////////////////////////////////////////
+                    // Store Result
+                    ////////////////////////////////////////////////////
+
+                    setJob(newJob);
+
+                    return newJob;
+
+                } catch (err: any) {
+
+                    console.error(
+                        "AutoNLP training error:",
+                        err,
                     );
 
-                setJob(newJob);
 
-                return newJob;
+                    ////////////////////////////////////////////////////
+                    // FastAPI Error Extraction
+                    ////////////////////////////////////////////////////
 
-            } catch (err: any) {
+                    const detail =
+                        err?.response?.data?.detail;
 
-                console.error(err);
+                    let errorMessage =
+                        "Failed to start AutoNLP training job.";
 
-                setError(
-                    err?.response?.data?.message ??
-                    "Failed to start AutoNLP training job."
-                );
 
-                throw err;
+                    if (typeof detail === "string") {
 
-            } finally {
+                        errorMessage = detail;
 
-                setLoading(false);
+                    } else if (Array.isArray(detail)) {
 
-            }
+                        errorMessage = detail
+                            .map((item: any) => item?.msg)
+                            .filter(Boolean)
+                            .join(", ");
+
+                    } else if (
+                        typeof err?.response?.data?.message ===
+                        "string"
+                    ) {
+
+                        errorMessage =
+                            err.response.data.message;
+
+                    } else if (
+                        typeof err?.message === "string"
+                    ) {
+
+                        errorMessage = err.message;
+                    }
+
+
+                    ////////////////////////////////////////////////////
+                    // Store Error
+                    ////////////////////////////////////////////////////
+
+                    setError(errorMessage);
+
+                    throw err;
+
+                } finally {
+
+                    setLoading(false);
+                }
+            },
+            [],
+        );
+
+
+    ////////////////////////////////////////////////////////////
+    // Reset
+    ////////////////////////////////////////////////////////////
+
+    const resetJob =
+        useCallback(() => {
+
+            setJob(null);
+
+            setError(null);
+
+            setLoading(false);
 
         }, []);
 
-    //////////////////////////////////////////////////////////
+
+    ////////////////////////////////////////////////////////////
     // Return
-    //////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////
 
     return {
-
         job,
 
         loading,
@@ -83,6 +155,6 @@ export default function useAutoNLPJob() {
 
         startTraining,
 
+        resetJob,
     };
-
 }
