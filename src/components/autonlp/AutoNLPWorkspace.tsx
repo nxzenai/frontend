@@ -12,21 +12,11 @@ import {
     Upload,
 } from "lucide-react";
 
-import {
-    CartesianGrid,
-    Legend,
-    Line,
-    LineChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
-} from "recharts";
-
 import useAutoNLPJob from "@/hooks/useAutoNLPJob";
+import AutoNLPService from "@/services/autonlp.service";
 
 import {
-    NLPArchitecture,
+    AutoNLPPredictResponse,
     NLPTask,
 } from "@/types/autonlp";
 
@@ -47,7 +37,7 @@ export default function AutoNLPWorkspace() {
 
 
     ////////////////////////////////////////////////////////////
-    // Form State
+    // Training Form State
     ////////////////////////////////////////////////////////////
 
     const [file, setFile] =
@@ -64,13 +54,29 @@ export default function AutoNLPWorkspace() {
             NLPTask.SENTIMENT_ANALYSIS
         );
 
-    const [architecture, setArchitecture] =
-        useState<NLPArchitecture>(
-            NLPArchitecture.LSTM
+    const [maxEpochs, setMaxEpochs] =
+        useState(10);
+
+
+    ////////////////////////////////////////////////////////////
+    // Prediction State
+    ////////////////////////////////////////////////////////////
+
+    const [predictionText, setPredictionText] =
+        useState("");
+
+    const [prediction, setPrediction] =
+        useState<AutoNLPPredictResponse | null>(
+            null
         );
 
-    const [maxEpochs, setMaxEpochs] =
-        useState(50);
+    const [predicting, setPredicting] =
+        useState(false);
+
+    const [
+        predictionError,
+        setPredictionError,
+    ] = useState<string | null>(null);
 
 
     ////////////////////////////////////////////////////////////
@@ -80,7 +86,6 @@ export default function AutoNLPWorkspace() {
     function toPercent(
         value?: number | null,
     ) {
-
         if (
             value === undefined ||
             value === null
@@ -97,7 +102,6 @@ export default function AutoNLPWorkspace() {
     function confidenceStyles(
         level?: string | null,
     ) {
-
         if (level === "Excellent") {
             return (
                 "border-emerald-500/30 " +
@@ -130,90 +134,46 @@ export default function AutoNLPWorkspace() {
     }
 
 
-    function handleTaskChange(
-        value: string,
+    function predictionConfidenceLabel(
+        confidence: number,
     ) {
-        setTask(
-            value as NLPTask
-        );
+        if (confidence >= 0.75) {
+            return "High confidence";
+        }
+
+        if (confidence >= 0.50) {
+            return "Moderate confidence";
+        }
+
+        return "Low confidence";
     }
 
 
-    function handleArchitectureChange(
-        value: string,
+    function predictionConfidenceClass(
+        confidence: number,
     ) {
-        setArchitecture(
-            value as NLPArchitecture
+        if (confidence >= 0.75) {
+            return (
+                "border-emerald-500/30 " +
+                "bg-emerald-500/10 " +
+                "text-emerald-300"
+            );
+        }
+
+        if (confidence >= 0.50) {
+            return (
+                "border-yellow-500/30 " +
+                "bg-yellow-500/10 " +
+                "text-yellow-300"
+            );
+        }
+
+        return (
+            "border-orange-500/30 " +
+            "bg-orange-500/10 " +
+            "text-orange-300"
         );
     }
-
-
-    ////////////////////////////////////////////////////////////
-    // Chart Data
-    ////////////////////////////////////////////////////////////
-
-    const accuracyChartData =
-        useMemo(() => {
-
-            const train =
-                job?.training_history
-                    ?.train_accuracy ?? [];
-
-            const validation =
-                job?.training_history
-                    ?.validation_accuracy ?? [];
-
-            const length = Math.max(
-                train.length,
-                validation.length,
-            );
-
-            return Array.from(
-                { length },
-                (_, index) => ({
-                    epoch: index + 1,
-
-                    training:
-                        train[index] ?? null,
-
-                    validation:
-                        validation[index] ?? null,
-                }),
-            );
-
-        }, [job]);
-
-
-    const lossChartData =
-        useMemo(() => {
-
-            const train =
-                job?.training_history
-                    ?.train_loss ?? [];
-
-            const validation =
-                job?.training_history
-                    ?.validation_loss ?? [];
-
-            const length = Math.max(
-                train.length,
-                validation.length,
-            );
-
-            return Array.from(
-                { length },
-                (_, index) => ({
-                    epoch: index + 1,
-
-                    training:
-                        train[index] ?? null,
-
-                    validation:
-                        validation[index] ?? null,
-                }),
-            );
-
-        }, [job]);
 
 
     ////////////////////////////////////////////////////////////
@@ -298,7 +258,7 @@ export default function AutoNLPWorkspace() {
                     title:
                         "Possible overfitting detected",
                     message:
-                        "The model performs noticeably better on training data than validation data. It may be memorizing the training examples too closely.",
+                        "The model performs noticeably better on training data than validation data. It may be memorizing training examples too closely.",
                     className:
                         "border-amber-500/30 bg-amber-500/10 text-amber-200",
                 };
@@ -315,7 +275,7 @@ export default function AutoNLPWorkspace() {
                     title:
                         "Strong generalization",
                     message:
-                        "Training and validation performance are closely aligned, with no obvious overfitting signal in this run.",
+                        "Training and validation performance are closely aligned, with no obvious overfitting signal.",
                     className:
                         "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
                 };
@@ -329,7 +289,7 @@ export default function AutoNLPWorkspace() {
                     title:
                         "Model is learning",
                     message:
-                        "The model has learned useful patterns, but more training data or tuning may improve validation performance.",
+                        "The model learned useful patterns, but additional data or tuning may improve validation performance.",
                     className:
                         "border-blue-500/30 bg-blue-500/10 text-blue-200",
                 };
@@ -372,25 +332,6 @@ export default function AutoNLPWorkspace() {
                     accuracy *
                     testSamples
                 );
-
-            const hasConfusion =
-                job.evaluation
-                    ?.confusion_matrix
-                    ?.some(
-                        (
-                            row,
-                            rowIndex,
-                        ) =>
-                            row.some(
-                                (
-                                    value,
-                                    columnIndex,
-                                ) =>
-                                    rowIndex !==
-                                        columnIndex &&
-                                    value > 0
-                            )
-                    ) ?? false;
 
             let title =
                 "Model Needs Improvement";
@@ -442,7 +383,6 @@ export default function AutoNLPWorkspace() {
                 badgeClass,
                 testSamples,
                 correctPredictions,
-                hasConfusion,
             };
 
         }, [job]);
@@ -465,21 +405,19 @@ export default function AutoNLPWorkspace() {
             return;
         }
 
+        setPrediction(null);
+        setPredictionText("");
+        setPredictionError(null);
+
         try {
 
             await startTraining({
                 file,
-
                 text_column:
                     textColumn.trim(),
-
                 target_column:
                     targetColumn.trim(),
-
                 task,
-
-                architecture,
-
                 max_epochs:
                     maxEpochs,
             });
@@ -492,12 +430,72 @@ export default function AutoNLPWorkspace() {
 
 
     ////////////////////////////////////////////////////////////
+    // Predict
+    ////////////////////////////////////////////////////////////
+
+    async function handlePredict() {
+
+        if (!job?.job_id) {
+            return;
+        }
+
+        const text =
+            predictionText.trim();
+
+        if (!text) {
+            setPredictionError(
+                "Enter some text to test the trained model."
+            );
+
+            return;
+        }
+
+        setPredicting(true);
+        setPredictionError(null);
+        setPrediction(null);
+
+        try {
+
+            const result =
+                await AutoNLPService.predict(
+                    job.job_id,
+                    {
+                        text,
+                    },
+                );
+
+            setPrediction(
+                result
+            );
+
+        } catch (err) {
+
+            console.error(
+                "AutoNLP prediction failed:",
+                err
+            );
+
+            setPredictionError(
+                "Prediction failed. Please confirm the trained model artifact is available and try again."
+            );
+
+        } finally {
+
+            setPredicting(false);
+        }
+    }
+
+
+    ////////////////////////////////////////////////////////////
     // Reset
     ////////////////////////////////////////////////////////////
 
     function handleReset() {
 
         setFile(null);
+        setPredictionText("");
+        setPrediction(null);
+        setPredictionError(null);
 
         resetJob();
     }
@@ -520,12 +518,41 @@ export default function AutoNLPWorkspace() {
                 </h1>
 
                 <p className="mt-2 max-w-3xl text-slate-400">
-                    Upload labelled text data,
-                    train a language model,
-                    and understand how well it learned
-                    using simple explanations and
-                    technical metrics.
+                    Upload labelled text data, run AutoNLP,
+                    review the trained LSTM model, and test
+                    the saved model on new text.
                 </p>
+
+            </div>
+
+
+            {/* Workflow */}
+
+            <div className="grid gap-4 md:grid-cols-4">
+
+                <StepCard
+                    number="1"
+                    title="Upload Data"
+                    text="Choose labelled text data."
+                />
+
+                <StepCard
+                    number="2"
+                    title="Run AutoNLP"
+                    text="NxZen trains the LSTM model."
+                />
+
+                <StepCard
+                    number="3"
+                    title="Review Model"
+                    text="Inspect validation results."
+                />
+
+                <StepCard
+                    number="4"
+                    title="Test Model"
+                    text="Try new unseen text."
+                />
 
             </div>
 
@@ -553,9 +580,8 @@ export default function AutoNLPWorkspace() {
 
                         <p className="mt-1 text-slate-400">
                             Upload CSV, XLS, or XLSX data
-                            containing the text you want
-                            the model to learn from and
-                            the correct label for each row.
+                            containing text and the correct
+                            label for each row.
                         </p>
 
                     </div>
@@ -583,11 +609,9 @@ export default function AutoNLPWorkspace() {
                             <div>
 
                                 <p className="font-medium text-white">
-
                                     {file
                                         ? file.name
                                         : "Choose dataset file"}
-
                                 </p>
 
                                 <p className="mt-1 text-sm text-slate-500">
@@ -612,6 +636,14 @@ export default function AutoNLPWorkspace() {
                                     selected
                                 );
 
+                                setPrediction(
+                                    null
+                                );
+
+                                setPredictionText(
+                                    ""
+                                );
+
                                 resetJob();
                             }}
                         />
@@ -621,7 +653,7 @@ export default function AutoNLPWorkspace() {
                 </div>
 
 
-                {/* Column Selection */}
+                {/* Columns */}
 
                 <div className="mt-6 grid gap-5 md:grid-cols-2">
 
@@ -633,20 +665,14 @@ export default function AutoNLPWorkspace() {
 
                         <input
                             value={textColumn}
-                            onChange={(e) => {
+                            onChange={(e) =>
                                 setTextColumn(
                                     e.target.value
-                                );
-                            }}
+                                )
+                            }
                             placeholder="text"
                             className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white focus:border-purple-500 focus:outline-none"
                         />
-
-                        <p className="mt-2 text-xs text-slate-500">
-                            The column containing the
-                            sentences or text the model
-                            should analyze.
-                        </p>
 
                     </div>
 
@@ -659,29 +685,23 @@ export default function AutoNLPWorkspace() {
 
                         <input
                             value={targetColumn}
-                            onChange={(e) => {
+                            onChange={(e) =>
                                 setTargetColumn(
                                     e.target.value
-                                );
-                            }}
+                                )
+                            }
                             placeholder="sentiment"
                             className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white focus:border-purple-500 focus:outline-none"
                         />
-
-                        <p className="mt-2 text-xs text-slate-500">
-                            The column containing the
-                            correct label, such as
-                            positive, neutral, or negative.
-                        </p>
 
                     </div>
 
                 </div>
 
 
-                {/* Task / Architecture / Epochs */}
+                {/* Task + Epochs */}
 
-                <div className="mt-6 grid gap-5 md:grid-cols-3">
+                <div className="mt-6 grid gap-5 md:grid-cols-2">
 
                     <div>
 
@@ -692,50 +712,27 @@ export default function AutoNLPWorkspace() {
                         <select
                             value={task}
                             onChange={(e) => {
-                                handleTaskChange(
-                                    e.target.value
+                                setTask(
+                                    e.target.value as NLPTask
                                 );
                             }}
                             className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white focus:border-purple-500 focus:outline-none"
                         >
 
-                            <option value={NLPTask.SENTIMENT_ANALYSIS}>
+                            <option
+                                value={
+                                    NLPTask.SENTIMENT_ANALYSIS
+                                }
+                            >
                                 Sentiment Analysis
                             </option>
 
-                            <option value={NLPTask.TEXT_CLASSIFICATION}>
+                            <option
+                                value={
+                                    NLPTask.TEXT_CLASSIFICATION
+                                }
+                            >
                                 Text Classification
-                            </option>
-
-                        </select>
-
-                    </div>
-
-
-                    <div>
-
-                        <label className="block text-sm font-medium text-slate-300">
-                            Architecture
-                        </label>
-
-                        <select
-                            value={
-                                architecture
-                            }
-                            onChange={(e) => {
-                                handleArchitectureChange(
-                                    e.target.value
-                                );
-                            }}
-                            className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white focus:border-purple-500 focus:outline-none"
-                        >
-
-                            <option value={NLPArchitecture.LSTM}>
-                                LSTM
-                            </option>
-
-                            <option value={NLPArchitecture.RNN}>
-                                RNN
                             </option>
 
                         </select>
@@ -753,9 +750,7 @@ export default function AutoNLPWorkspace() {
                             type="number"
                             min={1}
                             max={500}
-                            value={
-                                maxEpochs
-                            }
+                            value={maxEpochs}
                             onChange={(e) => {
 
                                 const value =
@@ -781,7 +776,23 @@ export default function AutoNLPWorkspace() {
                 </div>
 
 
-                {/* Train */}
+                {/* Automatic Architecture */}
+
+                <div className="mt-6 rounded-xl border border-purple-500/20 bg-purple-500/10 p-4">
+
+                    <p className="text-sm font-semibold text-purple-200">
+                        Model Selection
+                    </p>
+
+                    <p className="mt-1 text-sm leading-6 text-slate-300">
+                        AutoNLP currently uses the NxZen
+                        LSTM text model automatically.
+                    </p>
+
+                </div>
+
+
+                {/* Run */}
 
                 <button
                     onClick={
@@ -822,7 +833,7 @@ export default function AutoNLPWorkspace() {
                                 className="animate-spin"
                             />
 
-                            Training NLP Model...
+                            Running AutoNLP...
                         </>
 
                     ) : (
@@ -832,7 +843,7 @@ export default function AutoNLPWorkspace() {
                                 size={22}
                             />
 
-                            Train NLP Model
+                            Run AutoNLP
                         </>
 
                     )}
@@ -842,7 +853,7 @@ export default function AutoNLPWorkspace() {
             </div>
 
 
-            {/* Error */}
+            {/* Training Error */}
 
             {error && (
 
@@ -888,14 +899,13 @@ export default function AutoNLPWorkspace() {
                     <div>
 
                         <p className="font-semibold text-white">
-                            Training in progress
+                            AutoNLP is training your model
                         </p>
 
                         <p className="mt-1 text-slate-400">
-                            AutoNLP is preparing your
-                            text, learning patterns,
-                            and checking performance on
-                            unseen validation examples.
+                            The text is being prepared and
+                            the LSTM model is learning from
+                            your dataset.
                         </p>
 
                     </div>
@@ -930,7 +940,7 @@ export default function AutoNLPWorkspace() {
                                 <div>
 
                                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
-                                        Model Verdict
+                                        AutoNLP Result
                                     </p>
 
                                     <h2 className="mt-2 text-2xl font-bold text-white">
@@ -960,76 +970,77 @@ export default function AutoNLPWorkspace() {
                             </div>
 
 
-                            <div className="mt-6 grid gap-4 md:grid-cols-3">
+                            <div className="mt-6 grid gap-4 md:grid-cols-2">
 
-                                <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-5">
+                                <InfoCard
+                                    label="Correct Validation Predictions"
+                                    value={
+                                        `${modelVerdict.correctPredictions} / ${modelVerdict.testSamples}`
+                                    }
+                                    help="Validation examples classified correctly."
+                                />
 
-                                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                                        Correct Validation Predictions
+                                <InfoCard
+                                    label="Next Step"
+                                    value="Test Model"
+                                    help="Try realistic unseen text below."
+                                />
+
+                            </div>
+
+                        </div>
+
+                    )}
+
+
+                    {/* Artifact Ready */}
+
+                    {job.artifact && (
+
+                        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6">
+
+                            <div className="flex items-start gap-4">
+
+                                <CheckCircle2
+                                    size={28}
+                                    className="mt-1 text-emerald-400"
+                                />
+
+                                <div>
+
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
+                                        Model Artifact Ready
                                     </p>
 
-                                    <p className="mt-2 text-3xl font-bold text-white">
+                                    <h3 className="mt-2 text-xl font-bold text-white">
+                                        LSTM model saved successfully
+                                    </h3>
 
-                                        {
-                                            modelVerdict.correctPredictions
-                                        }
-
-                                        {" / "}
-
-                                        {
-                                            modelVerdict.testSamples
-                                        }
-
+                                    <p className="mt-2 max-w-3xl leading-7 text-slate-300">
+                                        AutoNLP saved the trained
+                                        model, vocabulary, labels,
+                                        and preprocessing metadata.
+                                        The trained model is ready
+                                        for testing.
                                     </p>
 
-                                    <p className="mt-2 text-sm leading-6 text-slate-400">
-                                        Validation examples
-                                        classified correctly.
-                                    </p>
+                                    <div className="mt-4 flex flex-wrap gap-3">
 
-                                </div>
+                                        <span className="rounded-full border border-emerald-500/30 bg-slate-950/50 px-3 py-1.5 text-sm text-emerald-200">
+                                            Model: {
+                                                job.artifact
+                                                    .model_name
+                                            }
+                                        </span>
 
+                                        <span className="rounded-full border border-emerald-500/30 bg-slate-950/50 px-3 py-1.5 text-sm text-emerald-200">
+                                            Status: {
+                                                job.artifact
+                                                    .status
+                                            }
+                                        </span>
 
-                                <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-5">
-
-                                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                                        Label Confusion
-                                    </p>
-
-                                    <p className="mt-2 text-xl font-bold text-white">
-
-                                        {modelVerdict.hasConfusion
-                                            ? "Some mistakes detected"
-                                            : "No confusion detected"}
-
-                                    </p>
-
-                                    <p className="mt-2 text-sm leading-6 text-slate-400">
-
-                                        {modelVerdict.hasConfusion
-                                            ? "The model mixed up some labels during validation."
-                                            : "No labels were mixed up in this validation run."}
-
-                                    </p>
-
-                                </div>
-
-
-                                <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-5">
-
-                                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                                        Recommended Next Step
-                                    </p>
-
-                                    <p className="mt-2 text-xl font-bold text-white">
-                                        Test on real unseen text
-                                    </p>
-
-                                    <p className="mt-2 text-sm leading-6 text-slate-400">
-                                        Confirm the result on
-                                        realistic data before
-                                        production use.
-                                    </p>
+                                    </div>
 
                                 </div>
 
@@ -1040,7 +1051,7 @@ export default function AutoNLPWorkspace() {
                     )}
 
 
-                    {/* Technical Model Result */}
+                    {/* Technical Result */}
 
                     <div className="rounded-2xl border border-slate-700 bg-slate-900 p-6">
 
@@ -1049,12 +1060,14 @@ export default function AutoNLPWorkspace() {
                             <div>
 
                                 <p className="text-sm uppercase tracking-wide text-slate-500">
-                                    Technical Model Result
+                                    Trained Model
                                 </p>
 
                                 <h2 className="mt-1 text-2xl font-bold text-white">
                                     {
-                                        job.metrics.architecture
+                                        job.metrics
+                                            .architecture
+                                        ?? "LSTM"
                                     }
                                 </h2>
 
@@ -1074,15 +1087,12 @@ export default function AutoNLPWorkspace() {
                                     )}
                                 `}
                             >
-
                                 {
                                     job.metrics
                                         .confidence_level
                                     ?? "N/A"
                                 }
-
                                 {" validation performance"}
-
                             </span>
 
                         </div>
@@ -1092,7 +1102,8 @@ export default function AutoNLPWorkspace() {
 
                             <p className="text-slate-300">
                                 {
-                                    job.metrics.summary
+                                    job.metrics
+                                        .summary
                                 }
                             </p>
 
@@ -1107,7 +1118,7 @@ export default function AutoNLPWorkspace() {
                                     job.metrics
                                         .accuracy
                                 )}
-                                help="How often the model gave the correct answer."
+                                help="How often validation examples were classified correctly."
                             />
 
                             <MetricCard
@@ -1116,7 +1127,7 @@ export default function AutoNLPWorkspace() {
                                     job.metrics
                                         .precision
                                 )}
-                                help="When the model predicted a label, how often that prediction was correct."
+                                help="How often predicted labels were correct."
                             />
 
                             <MetricCard
@@ -1125,7 +1136,7 @@ export default function AutoNLPWorkspace() {
                                     job.metrics
                                         .recall
                                 )}
-                                help="How many of the real examples for each label the model successfully found."
+                                help="How many real examples the model successfully identified."
                             />
 
                             <MetricCard
@@ -1134,7 +1145,7 @@ export default function AutoNLPWorkspace() {
                                     job.metrics
                                         .f1_score
                                 )}
-                                help="A balanced measure combining precision and recall."
+                                help="Balanced measure of precision and recall."
                             />
 
                         </div>
@@ -1145,11 +1156,15 @@ export default function AutoNLPWorkspace() {
                             <InfoCard
                                 label="Prediction Error"
                                 value={
-                                    job.metrics
-                                        .final_loss
-                                    ?? 0
+                                    (
+                                        job.metrics
+                                            .final_loss
+                                        ?? 0
+                                    ).toFixed(
+                                        4
+                                    )
                                 }
-                                help="Lower is better. This represents how far the model's predictions were from the correct answers."
+                                help="Lower validation loss is generally better."
                             />
 
                             <InfoCard
@@ -1159,7 +1174,7 @@ export default function AutoNLPWorkspace() {
                                         .input_tokens
                                     ?? 0
                                 }
-                                help="The size of the vocabulary created from the uploaded text."
+                                help="Vocabulary size learned from the uploaded dataset."
                             />
 
                         </div>
@@ -1185,6 +1200,7 @@ export default function AutoNLPWorkspace() {
                                 </h3>
 
                             </div>
+
 
                             <div className="mt-5 grid grid-cols-2 gap-4">
 
@@ -1230,7 +1246,7 @@ export default function AutoNLPWorkspace() {
                             <div className="mt-5">
 
                                 <p className="text-sm text-slate-500">
-                                    Labels the model learned
+                                    Labels learned
                                 </p>
 
                                 <div className="mt-2 flex flex-wrap gap-2">
@@ -1246,9 +1262,7 @@ export default function AutoNLPWorkspace() {
                                                     }
                                                     className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-300"
                                                 >
-                                                    {
-                                                        label
-                                                    }
+                                                    {label}
                                                 </span>
 
                                             )
@@ -1271,7 +1285,7 @@ export default function AutoNLPWorkspace() {
                                 />
 
                                 <h3 className="text-lg font-bold text-white">
-                                    How Training Went
+                                    Training Details
                                 </h3>
 
                             </div>
@@ -1330,12 +1344,8 @@ export default function AutoNLPWorkspace() {
 
                                     {job.training_info
                                         ?.early_stopped
-                                        ? (
-                                            "Yes — training stopped automatically when validation performance stopped improving."
-                                        )
-                                        : (
-                                            "No — validation performance continued improving, so all requested epochs were completed."
-                                        )}
+                                        ? "Yes — training stopped when validation performance stopped improving."
+                                        : "No — training completed the requested epochs."}
 
                                 </p>
 
@@ -1390,471 +1400,7 @@ export default function AutoNLPWorkspace() {
                     </div>
 
 
-                    {/* Accuracy Chart */}
-
-                    {accuracyChartData.length > 0 && (
-
-                        <div className="rounded-2xl border border-slate-700 bg-slate-900 p-6">
-
-                            <h3 className="text-lg font-bold text-white">
-                                How Accuracy Improved
-                            </h3>
-
-                            <p className="mt-1 max-w-4xl text-sm leading-6 text-slate-400">
-                                Purple shows how well the
-                                model learned the training
-                                examples. Green shows how
-                                well it performed on unseen
-                                validation examples. When
-                                both lines stay close, the
-                                model is usually learning
-                                patterns rather than simply
-                                memorizing the training data.
-                            </p>
-
-
-                            <div className="mt-6 h-80">
-
-                                <ResponsiveContainer
-                                    width="100%"
-                                    height="100%"
-                                >
-
-                                    <LineChart
-                                        data={
-                                            accuracyChartData
-                                        }
-                                        margin={{
-                                            top: 10,
-                                            right: 20,
-                                            left: 0,
-                                            bottom: 5,
-                                        }}
-                                    >
-
-                                        <CartesianGrid
-                                            stroke="#334155"
-                                            strokeDasharray="3 6"
-                                            vertical={
-                                                false
-                                            }
-                                        />
-
-                                        <XAxis
-                                            dataKey="epoch"
-                                            stroke="#94a3b8"
-                                            tickLine={
-                                                false
-                                            }
-                                            axisLine={
-                                                false
-                                            }
-                                            minTickGap={
-                                                28
-                                            }
-                                        />
-
-                                        <YAxis
-                                            domain={[
-                                                0,
-                                                1,
-                                            ]}
-                                            stroke="#94a3b8"
-                                            tickLine={
-                                                false
-                                            }
-                                            axisLine={
-                                                false
-                                            }
-                                            width={
-                                                48
-                                            }
-                                            tickFormatter={(
-                                                value
-                                            ) =>
-                                                `${Math.round(
-                                                    Number(
-                                                        value
-                                                    ) *
-                                                    100
-                                                )}%`
-                                            }
-                                        />
-
-                                        <Tooltip
-                                            formatter={(
-                                                value
-                                            ) => {
-
-                                                const numericValue =
-                                                    Number(
-                                                        value ??
-                                                        0
-                                                    );
-
-                                                return `${(
-                                                    numericValue *
-                                                    100
-                                                ).toFixed(
-                                                    1
-                                                )}%`;
-                                            }}
-                                            labelFormatter={(
-                                                epoch
-                                            ) =>
-                                                `Epoch ${epoch}`
-                                            }
-                                            contentStyle={{
-                                                backgroundColor:
-                                                    "#0f172a",
-                                                border:
-                                                    "1px solid #334155",
-                                                borderRadius:
-                                                    "12px",
-                                            }}
-                                        />
-
-                                        <Legend
-                                            verticalAlign="top"
-                                            height={
-                                                36
-                                            }
-                                        />
-
-                                        <Line
-                                            type="monotone"
-                                            dataKey="training"
-                                            name="Training Accuracy"
-                                            stroke="#a855f7"
-                                            strokeWidth={
-                                                2.5
-                                            }
-                                            dot={
-                                                false
-                                            }
-                                        />
-
-                                        <Line
-                                            type="monotone"
-                                            dataKey="validation"
-                                            name="Validation Accuracy"
-                                            stroke="#22c55e"
-                                            strokeWidth={
-                                                2.5
-                                            }
-                                            dot={
-                                                false
-                                            }
-                                        />
-
-                                    </LineChart>
-
-                                </ResponsiveContainer>
-
-                            </div>
-
-                        </div>
-
-                    )}
-
-
-                    {/* Loss Chart */}
-
-                    {lossChartData.length > 0 && (
-
-                        <div className="rounded-2xl border border-slate-700 bg-slate-900 p-6">
-
-                            <h3 className="text-lg font-bold text-white">
-                                How Prediction Error Changed
-                            </h3>
-
-                            <p className="mt-1 max-w-4xl text-sm leading-6 text-slate-400">
-                                Loss represents prediction
-                                error, so lower is better.
-                                When both training and
-                                validation loss decrease
-                                together, the model is
-                                usually learning in a
-                                healthy way.
-                            </p>
-
-
-                            <div className="mt-6 h-80">
-
-                                <ResponsiveContainer
-                                    width="100%"
-                                    height="100%"
-                                >
-
-                                    <LineChart
-                                        data={
-                                            lossChartData
-                                        }
-                                        margin={{
-                                            top: 10,
-                                            right: 20,
-                                            left: 0,
-                                            bottom: 5,
-                                        }}
-                                    >
-
-                                        <CartesianGrid
-                                            stroke="#334155"
-                                            strokeDasharray="3 6"
-                                            vertical={
-                                                false
-                                            }
-                                        />
-
-                                        <XAxis
-                                            dataKey="epoch"
-                                            stroke="#94a3b8"
-                                            tickLine={
-                                                false
-                                            }
-                                            axisLine={
-                                                false
-                                            }
-                                            minTickGap={
-                                                28
-                                            }
-                                        />
-
-                                        <YAxis
-                                            stroke="#94a3b8"
-                                            tickLine={
-                                                false
-                                            }
-                                            axisLine={
-                                                false
-                                            }
-                                            width={
-                                                48
-                                            }
-                                        />
-
-                                        <Tooltip
-                                            formatter={(
-                                                value
-                                            ) => {
-
-                                                const numericValue =
-                                                    Number(
-                                                        value ??
-                                                        0
-                                                    );
-
-                                                return numericValue.toFixed(
-                                                    4
-                                                );
-                                            }}
-                                            labelFormatter={(
-                                                epoch
-                                            ) =>
-                                                `Epoch ${epoch}`
-                                            }
-                                            contentStyle={{
-                                                backgroundColor:
-                                                    "#0f172a",
-                                                border:
-                                                    "1px solid #334155",
-                                                borderRadius:
-                                                    "12px",
-                                            }}
-                                        />
-
-                                        <Legend
-                                            verticalAlign="top"
-                                            height={
-                                                36
-                                            }
-                                        />
-
-                                        <Line
-                                            type="monotone"
-                                            dataKey="training"
-                                            name="Training Error"
-                                            stroke="#a855f7"
-                                            strokeWidth={
-                                                2.5
-                                            }
-                                            dot={
-                                                false
-                                            }
-                                        />
-
-                                        <Line
-                                            type="monotone"
-                                            dataKey="validation"
-                                            name="Validation Error"
-                                            stroke="#38bdf8"
-                                            strokeWidth={
-                                                2.5
-                                            }
-                                            dot={
-                                                false
-                                            }
-                                        />
-
-                                    </LineChart>
-
-                                </ResponsiveContainer>
-
-                            </div>
-
-                        </div>
-
-                    )}
-
-
-                    {/* Confusion Matrix */}
-
-                    {job.evaluation && (
-
-                        <div className="rounded-2xl border border-slate-700 bg-slate-900 p-6">
-
-                            <h3 className="text-lg font-bold text-white">
-                                Where the Model Got Confused
-                            </h3>
-
-                            <p className="mt-1 max-w-4xl text-sm leading-6 text-slate-400">
-                                Green diagonal cells are
-                                correct predictions.
-                                Off-diagonal cells show
-                                mistakes where one label was
-                                predicted as another.
-                            </p>
-
-
-                            <div className="mt-6 overflow-x-auto">
-
-                                <table className="w-full border-collapse text-center">
-
-                                    <thead>
-
-                                        <tr>
-
-                                            <th className="p-3 text-left text-sm text-slate-500">
-                                                Actual ↓ /
-                                                Predicted →
-                                            </th>
-
-                                            {job.evaluation
-                                                .labels
-                                                .map(
-                                                    (
-                                                        label
-                                                    ) => (
-
-                                                        <th
-                                                            key={
-                                                                label
-                                                            }
-                                                            className="p-3 text-sm font-semibold text-slate-300"
-                                                        >
-                                                            {
-                                                                label
-                                                            }
-                                                        </th>
-
-                                                    )
-                                                )}
-
-                                        </tr>
-
-                                    </thead>
-
-
-                                    <tbody>
-
-                                        {job.evaluation
-                                            .confusion_matrix
-                                            .map(
-                                                (
-                                                    row,
-                                                    rowIndex,
-                                                ) => (
-
-                                                    <tr
-                                                        key={
-                                                            rowIndex
-                                                        }
-                                                    >
-
-                                                        <td className="p-3 text-left font-medium text-slate-300">
-
-                                                            {
-                                                                job.evaluation
-                                                                    ?.labels[
-                                                                    rowIndex
-                                                                ]
-                                                            }
-
-                                                        </td>
-
-                                                        {row.map(
-                                                            (
-                                                                cell,
-                                                                columnIndex,
-                                                            ) => (
-
-                                                                <td
-                                                                    key={
-                                                                        columnIndex
-                                                                    }
-                                                                    className={`
-                                                                        border
-                                                                        border-slate-800
-                                                                        p-5
-                                                                        text-lg
-                                                                        font-bold
-                                                                        ${
-                                                                            rowIndex ===
-                                                                            columnIndex
-                                                                                ? "bg-emerald-500/15 text-emerald-300"
-                                                                                : cell >
-                                                                                  0
-                                                                                    ? "bg-red-500/15 text-red-300"
-                                                                                    : "bg-slate-950/40 text-slate-500"
-                                                                        }
-                                                                    `}
-                                                                >
-                                                                    {
-                                                                        cell
-                                                                    }
-                                                                </td>
-
-                                                            )
-                                                        )}
-
-                                                    </tr>
-
-                                                )
-                                            )}
-
-                                    </tbody>
-
-                                </table>
-
-                            </div>
-
-
-                            {!modelVerdict?.hasConfusion && (
-
-                                <div className="mt-5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">
-                                    No label mix-ups were
-                                    found in this validation
-                                    run.
-                                </div>
-
-                            )}
-
-                        </div>
-
-                    )}
-
-
-                    {/* Per-Class */}
+                    {/* Performance by Class */}
 
                     {job.evaluation
                         ?.class_metrics
@@ -1863,16 +1409,13 @@ export default function AutoNLPWorkspace() {
                         <div className="rounded-2xl border border-slate-700 bg-slate-900 p-6">
 
                             <h3 className="text-lg font-bold text-white">
-                                Performance for Each Label
+                                Performance by Class
                             </h3>
 
                             <p className="mt-1 text-sm text-slate-400">
-                                This shows whether the model
-                                performs equally well for all
-                                labels or struggles with a
-                                particular class.
+                                See how well the model
+                                performed for each label.
                             </p>
-
 
                             <div className="mt-6 overflow-x-auto">
 
@@ -1899,13 +1442,12 @@ export default function AutoNLPWorkspace() {
                                             </th>
 
                                             <th className="pb-3">
-                                                Validation Samples
+                                                Samples
                                             </th>
 
                                         </tr>
 
                                     </thead>
-
 
                                     <tbody>
 
@@ -1969,6 +1511,292 @@ export default function AutoNLPWorkspace() {
                     ) : null}
 
 
+                    {/* Test Trained Model */}
+
+                    {job.artifact &&
+                        job.artifact.status ===
+                            "ready" && (
+
+                        <div className="rounded-2xl border border-purple-500/30 bg-slate-900 p-6">
+
+                            <div className="flex flex-wrap items-start justify-between gap-4">
+
+                                <div>
+
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-300">
+                                        Step 4
+                                    </p>
+
+                                    <h3 className="mt-2 text-2xl font-bold text-white">
+                                        Test Trained Model
+                                    </h3>
+
+                                    <p className="mt-2 max-w-3xl leading-7 text-slate-400">
+                                        Enter new text below.
+                                        AutoNLP will use the
+                                        saved LSTM artifact from
+                                        this training run.
+                                    </p>
+
+                                </div>
+
+                                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-300">
+                                    Artifact Ready
+                                </span>
+
+                            </div>
+
+
+                            <div className="mt-6">
+
+                                <label className="block text-sm font-medium text-slate-300">
+                                    New Text
+                                </label>
+
+                                <textarea
+                                    value={
+                                        predictionText
+                                    }
+                                    onChange={(e) => {
+
+                                        setPredictionText(
+                                            e.target.value
+                                        );
+
+                                        setPrediction(
+                                            null
+                                        );
+
+                                        setPredictionError(
+                                            null
+                                        );
+                                    }}
+                                    rows={5}
+                                    placeholder="Example: I am unhappy with the product because I kept running into errors."
+                                    className="mt-2 w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 leading-7 text-white placeholder:text-slate-600 focus:border-purple-500 focus:outline-none"
+                                />
+
+                            </div>
+
+
+                            <button
+                                type="button"
+                                onClick={
+                                    handlePredict
+                                }
+                                disabled={
+                                    predicting ||
+                                    !predictionText.trim()
+                                }
+                                className="
+                                    mt-4
+                                    flex
+                                    w-full
+                                    items-center
+                                    justify-center
+                                    gap-3
+                                    rounded-xl
+                                    bg-purple-600
+                                    px-6
+                                    py-3.5
+                                    font-semibold
+                                    text-white
+                                    transition
+                                    hover:bg-purple-700
+                                    disabled:cursor-not-allowed
+                                    disabled:opacity-50
+                                "
+                            >
+
+                                {predicting ? (
+
+                                    <>
+                                        <Loader2
+                                            size={20}
+                                            className="animate-spin"
+                                        />
+
+                                        Testing Model...
+                                    </>
+
+                                ) : (
+
+                                    "Predict With Trained Model"
+
+                                )}
+
+                            </button>
+
+
+                            {predictionError && (
+
+                                <div className="mt-5 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
+
+                                    <div className="flex items-start gap-3">
+
+                                        <AlertTriangle
+                                            size={20}
+                                            className="mt-0.5"
+                                        />
+
+                                        <p>
+                                            {
+                                                predictionError
+                                            }
+                                        </p>
+
+                                    </div>
+
+                                </div>
+
+                            )}
+
+
+                            {prediction && (
+
+                                <div className="mt-6 space-y-5">
+
+                                    <div className="grid gap-4 md:grid-cols-3">
+
+                                        <InfoCard
+                                            label="Prediction"
+                                            value={
+                                                prediction
+                                                    .predicted_label
+                                            }
+                                        />
+
+                                        <InfoCard
+                                            label="Confidence"
+                                            value={toPercent(
+                                                prediction
+                                                    .confidence
+                                            )}
+                                        />
+
+                                        <InfoCard
+                                            label="Model"
+                                            value={
+                                                prediction
+                                                    .model_name
+                                            }
+                                        />
+
+                                    </div>
+
+
+                                    <div
+                                        className={`
+                                            rounded-xl
+                                            border
+                                            p-4
+                                            ${predictionConfidenceClass(
+                                                prediction.confidence
+                                            )}
+                                        `}
+                                    >
+
+                                        <p className="font-semibold">
+                                            {
+                                                predictionConfidenceLabel(
+                                                    prediction
+                                                        .confidence
+                                                )
+                                            }
+                                        </p>
+
+                                        <p className="mt-1 text-sm leading-6 opacity-90">
+
+                                            {prediction.confidence <
+                                            0.50
+                                                ? "The model is uncertain about this prediction. Consider more representative training data before relying on the result."
+                                                : "The model has a clearer preference for this prediction, but it should still be validated on realistic unseen data."}
+
+                                        </p>
+
+                                    </div>
+
+
+                                    <div className="rounded-xl border border-slate-700 bg-slate-950 p-5">
+
+                                        <h4 className="font-semibold text-white">
+                                            Class Probabilities
+                                        </h4>
+
+                                        <div className="mt-5 space-y-4">
+
+                                            {prediction
+                                                .probabilities
+                                                .map(
+                                                    (
+                                                        item
+                                                    ) => {
+
+                                                        const width =
+                                                            Math.max(
+                                                                0,
+                                                                Math.min(
+                                                                    100,
+                                                                    item.probability *
+                                                                        100
+                                                                )
+                                                            );
+
+                                                        return (
+
+                                                            <div
+                                                                key={
+                                                                    item.label
+                                                                }
+                                                            >
+
+                                                                <div className="flex items-center justify-between gap-4">
+
+                                                                    <span className="font-medium text-slate-300">
+                                                                        {
+                                                                            item.label
+                                                                        }
+                                                                    </span>
+
+                                                                    <span className="font-semibold text-white">
+                                                                        {toPercent(
+                                                                            item.probability
+                                                                        )}
+                                                                    </span>
+
+                                                                </div>
+
+                                                                <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800">
+
+                                                                    <div
+                                                                        className="h-full rounded-full bg-purple-500 transition-all"
+                                                                        style={{
+                                                                            width:
+                                                                                `${width}%`,
+                                                                        }}
+                                                                    />
+
+                                                                </div>
+
+                                                            </div>
+
+                                                        );
+                                                    }
+                                                )}
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            )}
+
+                        </div>
+
+                    )}
+
+
                     {/* Plain English */}
 
                     <div className="rounded-2xl border border-purple-500/20 bg-purple-500/10 p-6">
@@ -1979,7 +1807,9 @@ export default function AutoNLPWorkspace() {
 
                         <p className="mt-3 max-w-4xl leading-7 text-slate-300">
 
-                            Out of{" "}
+                            AutoNLP trained an LSTM model
+                            using your uploaded data. It was
+                            evaluated on{" "}
 
                             <strong className="text-white">
                                 {
@@ -1989,8 +1819,8 @@ export default function AutoNLPWorkspace() {
                                 }
                             </strong>
 
-                            {" "}validation examples,
-                            the model correctly classified
+                            {" "}validation examples and
+                            correctly classified
                             approximately{" "}
 
                             <strong className="text-white">
@@ -2012,52 +1842,10 @@ export default function AutoNLPWorkspace() {
 
                             {". "}
 
-                            {modelVerdict?.hasConfusion
-                                ? (
-                                    "Some labels were confused with one another. Check the matrix above to see where those mistakes happened."
-                                )
-                                : (
-                                    "No label mix-ups were detected in this validation run."
-                                )}
-
-                            {" "}
-
-                            {job.training_info
-                                ?.early_stopped
-                                ? (
-                                    "Training stopped automatically once validation performance stopped improving."
-                                )
-                                : (
-                                    "Training completed the requested epochs because validation performance continued improving."
-                                )}
+                            The trained model has also been
+                            saved and is ready for testing.
 
                         </p>
-
-
-                        {(
-                            job.metrics.accuracy
-                            ?? 0
-                        ) >= 0.95 && (
-
-                            <div className="mt-5 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4">
-
-                                <p className="text-sm font-semibold text-amber-200">
-                                    Important
-                                </p>
-
-                                <p className="mt-1 text-sm leading-6 text-amber-100/80">
-                                    A near-perfect validation
-                                    score is encouraging, but
-                                    it does not automatically
-                                    mean the model is ready for
-                                    production. Test it on
-                                    realistic unseen text
-                                    before deployment.
-                                </p>
-
-                            </div>
-
-                        )}
 
                     </div>
 
@@ -2070,7 +1858,7 @@ export default function AutoNLPWorkspace() {
                         }
                         className="rounded-xl border border-slate-700 px-5 py-3 font-medium text-slate-300 transition hover:border-purple-500 hover:text-white"
                     >
-                        Train Another Model
+                        Start New AutoNLP Run
                     </button>
 
                 </div>
@@ -2078,6 +1866,50 @@ export default function AutoNLPWorkspace() {
             )}
 
         </div>
+    );
+}
+
+
+////////////////////////////////////////////////////////////
+// Workflow Step
+////////////////////////////////////////////////////////////
+
+function StepCard({
+    number,
+    title,
+    text,
+}: {
+    number: string;
+    title: string;
+    text: string;
+}) {
+
+    return (
+
+        <div className="rounded-2xl border border-slate-700 bg-slate-900 p-5">
+
+            <div className="flex items-start gap-3">
+
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-purple-600 font-bold text-white">
+                    {number}
+                </div>
+
+                <div>
+
+                    <p className="font-semibold text-white">
+                        {title}
+                    </p>
+
+                    <p className="mt-1 text-sm leading-5 text-slate-500">
+                        {text}
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
     );
 }
 
@@ -2144,7 +1976,7 @@ function InfoCard({
                 {label}
             </p>
 
-            <p className="mt-2 text-xl font-bold text-white">
+            <p className="mt-2 break-words text-xl font-bold text-white">
                 {value}
             </p>
 

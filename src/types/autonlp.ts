@@ -10,7 +10,6 @@ export enum NLPTask {
 
 export enum NLPArchitecture {
     LSTM = "lstm",
-    RNN = "rnn",
 }
 
 export type AutoNLPJobStatus =
@@ -32,8 +31,6 @@ export interface AutoNLPJobCreateRequest {
     target_column: string;
 
     task: NLPTask;
-
-    architecture: NLPArchitecture;
 
     max_epochs: number;
 }
@@ -150,6 +147,58 @@ export interface AutoNLPEvaluation {
 
 
 ////////////////////////////////////////////////////////////
+// Model Artifact
+////////////////////////////////////////////////////////////
+
+export interface AutoNLPArtifactInfo {
+    artifact_id?: string | null;
+
+    model_name: string;
+
+    status: string;
+
+    artifact_path?: string | null;
+}
+
+
+////////////////////////////////////////////////////////////
+// Prediction Request
+////////////////////////////////////////////////////////////
+
+export interface AutoNLPPredictRequest {
+    text: string;
+}
+
+
+////////////////////////////////////////////////////////////
+// Prediction Probability
+////////////////////////////////////////////////////////////
+
+export interface AutoNLPClassProbability {
+    label: string;
+
+    probability: number;
+}
+
+
+////////////////////////////////////////////////////////////
+// Prediction Response
+////////////////////////////////////////////////////////////
+
+export interface AutoNLPPredictResponse {
+    job_id: string;
+
+    model_name: string;
+
+    predicted_label: string;
+
+    confidence: number;
+
+    probabilities: AutoNLPClassProbability[];
+}
+
+
+////////////////////////////////////////////////////////////
 // Job Response
 ////////////////////////////////////////////////////////////
 
@@ -173,6 +222,8 @@ export interface AutoNLPJobResponse {
     training_history?: AutoNLPTrainingHistory | null;
 
     evaluation?: AutoNLPEvaluation | null;
+
+    artifact?: AutoNLPArtifactInfo | null;
 
     created_at?: string | null;
 }

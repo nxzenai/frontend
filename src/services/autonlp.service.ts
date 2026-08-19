@@ -3,6 +3,8 @@ import api from "@/lib/studioApi";
 import {
     AutoNLPJobCreateRequest,
     AutoNLPJobResponse,
+    AutoNLPPredictRequest,
+    AutoNLPPredictResponse,
 } from "@/types/autonlp";
 
 
@@ -44,13 +46,10 @@ class AutoNLPService {
         );
 
         formData.append(
-            "architecture",
-            request.architecture,
-        );
-
-        formData.append(
             "max_epochs",
-            String(request.max_epochs),
+            String(
+                request.max_epochs,
+            ),
         );
 
 
@@ -63,19 +62,9 @@ class AutoNLPService {
                 "/autonlp/jobs",
                 formData,
                 {
-                    /*
-                     * studioApi normally uses:
-                     *
-                     * Content-Type: application/json
-                     *
-                     * AutoNLP is a file-upload endpoint,
-                     * so this request must be multipart.
-                     *
-                     * Axios/browser will generate the
-                     * multipart boundary automatically.
-                     */
                     headers: {
-                        "Content-Type": "multipart/form-data",
+                        "Content-Type":
+                            "multipart/form-data",
                     },
                 },
             );
@@ -84,6 +73,42 @@ class AutoNLPService {
         ////////////////////////////////////////////////////////
         // Response
         ////////////////////////////////////////////////////////
+
+        return response.data;
+    }
+
+
+    ////////////////////////////////////////////////////////////
+    // Get AutoNLP Job
+    ////////////////////////////////////////////////////////////
+
+    async getJob(
+        jobId: string,
+    ): Promise<AutoNLPJobResponse> {
+
+        const response =
+            await api.get<AutoNLPJobResponse>(
+                `/autonlp/jobs/${jobId}`,
+            );
+
+        return response.data;
+    }
+
+
+    ////////////////////////////////////////////////////////////
+    // Predict Using Saved LSTM Artifact
+    ////////////////////////////////////////////////////////////
+
+    async predict(
+        jobId: string,
+        request: AutoNLPPredictRequest,
+    ): Promise<AutoNLPPredictResponse> {
+
+        const response =
+            await api.post<AutoNLPPredictResponse>(
+                `/autonlp/jobs/${jobId}/predict`,
+                request,
+            );
 
         return response.data;
     }
