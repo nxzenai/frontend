@@ -16,6 +16,7 @@ import {
 
 export default function Sidebar() {
   const router = useRouter();
+
   const { user, logout } = useAuth();
 
   function handleLogout() {
@@ -78,9 +79,11 @@ export default function Sidebar() {
 
   return (
     <aside className="flex h-screen w-72 flex-col border-r border-slate-800 bg-[#020617]">
+
       {/* Logo */}
 
       <div className="border-b border-slate-800 px-6 py-6">
+
         <h1 className="text-2xl font-bold text-white">
           NxZen AI Studio
         </h1>
@@ -88,62 +91,89 @@ export default function Sidebar() {
         <p className="mt-1 text-sm text-slate-400">
           Enterprise AI Platform
         </p>
+
       </div>
 
       {/* Navigation */}
 
-      <div className="flex-1 overflow-y-auto px-4 py-5">
-        <SidebarSection
-          title="Home"
-          items={homeItems}
-        />
+      <div
+    className="
+        flex-1
+        overflow-y-auto
+        px-4
+        py-5
+        pb-40
+    "
+>
 
-        <SidebarSection
-          title="AI Labs"
-          items={labItems}
-        />
+    <SidebarSection
+        title="Home"
+        items={homeItems}
+    />
 
-        <SidebarSection
-          title="Business"
-          items={businessItems}
-        />
+    <SidebarSection
+        title="AI Labs"
+        items={labItems}
+    />
 
-        <SidebarSection
-          title="Platform"
-          items={platformItems}
-        />
+    <SidebarSection
+        title="Business"
+        items={businessItems}
+    />
 
-        <SidebarSection
-          title="Dashboard"
-          items={dashboardItems}
-        />
-      </div>
+    <SidebarSection
+        title="Platform"
+        items={platformItems}
+    />
 
+</div>
       {/* Bottom Profile */}
 
-      <div className="border-t border-slate-800 bg-[#020617] p-4">
+      <div
+    className="
+        sticky
+        bottom-0
+        border-t
+        border-slate-800
+        bg-[#020617]
+        p-4
+    "
+>
+
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+
           {/* User */}
 
           <div className="flex items-center gap-3">
+
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-lg font-bold text-white">
+
               {user?.full_name?.charAt(0).toUpperCase()}
+
             </div>
 
             <div className="min-w-0 flex-1">
+
               <p className="truncate font-semibold text-white">
+
                 {user?.full_name}
+
               </p>
 
               <p className="truncate text-xs text-slate-400">
+
                 {user?.email}
+
               </p>
+
             </div>
+
           </div>
 
           {/* Role */}
 
           <div className="mt-4">
+
             <span
               className={`
                 inline-flex
@@ -171,6 +201,7 @@ export default function Sidebar() {
                 ?.replace("_", " ")
                 .toUpperCase()}
             </span>
+
           </div>
 
           {/* Divider */}
@@ -201,13 +232,17 @@ export default function Sidebar() {
             "
           >
             <LogOut size={18} />
+
             Logout
+
           </button>
+
         </div>
 
         {/* Version */}
 
         <div className="mt-4 text-center">
+
           <p className="text-xs text-slate-500">
             NxZen AI Studio
           </p>
@@ -215,8 +250,11 @@ export default function Sidebar() {
           <p className="mt-1 text-xs text-slate-600">
             Enterprise Edition • v1.0.0
           </p>
+
         </div>
+
       </div>
+
     </aside>
   );
 }

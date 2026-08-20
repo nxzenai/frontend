@@ -30,7 +30,7 @@ export interface NavigationItem {
   | "user_management"
   | "platform";
   section:
-    | "home"
+    | "dashboard"
     | "labs"
     | "business"
     | "platform";
@@ -134,6 +134,6 @@ export const NAVIGATION: NavigationItem[] = [
     href: "/dashboard",
     icon: Home,
     permission: "dashboard",
-    section: "home",
+    section: "dashboard",
   },
 ];
