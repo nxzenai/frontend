@@ -62,30 +62,6 @@ export default function DashboardPage() {
     <ProtectedRoute>
       <DashboardLayout>
         <WelcomeBanner />
-
-        {/* Statistics */}
-
-        <div className="grid gap-6 md:grid-cols-3">
-
-          <StatsCard
-            title="Notebooks"
-            value={notebooks.length}
-            icon={<BookOpen />}
-          />
-
-          <StatsCard
-            title="Executions"
-            value={0}
-            icon={<PlayCircle />}
-          />
-
-          <StatsCard
-            title="Kernel Hours"
-            value={0}
-            icon={<Clock />}
-          />
-
-        </div>
         <QuickActions />
 
         {/* Search */}
