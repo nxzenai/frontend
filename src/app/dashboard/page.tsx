@@ -64,14 +64,6 @@ export default function DashboardPage() {
         <WelcomeBanner />
         <QuickActions />
 
-        {/* Search */}
-
-        <div className="my-8">
-
-          <SearchBar
-            value={search}
-            onChange={setSearch}
-          />
 
         </div>
 
