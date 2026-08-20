@@ -65,8 +65,6 @@ export default function DashboardPage() {
         <QuickActions />
 
 
-        </div>
-
         {/* Notebook List */}
 
         {filtered.length === 0 ? (
