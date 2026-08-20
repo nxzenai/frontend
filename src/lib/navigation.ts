@@ -38,13 +38,6 @@ export interface NavigationItem {
 }
 
 export const NAVIGATION: NavigationItem[] = [
-  {
-    title: "Dashboard",
-    href: "/dashboard",
-    icon: Home,
-    permission: "dashboard",
-    section: "home",
-  },
 
     {
     title: "SQL Lab",
@@ -134,5 +127,13 @@ export const NAVIGATION: NavigationItem[] = [
     icon: Settings,
     permission: "platform",
     section: "platform",
+  },
+
+  {
+    title: "Dashboard",
+    href: "/dashboard",
+    icon: Home,
+    permission: "dashboard",
+    section: "home",
   },
 ];
