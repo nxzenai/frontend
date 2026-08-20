@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
 import {
-  Plus,
   Code2,
   Database,
   Users,
   UserPlus,
   ArrowRight,
+  BrainCircuit,
+  Cpu,
+  Languages,
+  Sparkles,
 } from "lucide-react";
 
 export default function QuickActions() {
@@ -49,7 +52,7 @@ export default function QuickActions() {
         {/* Python Lab */}
 
         <button
-          onClick={() => router.push("/dashboard")}
+          onClick={() => router.push("/python-lab")}
           className="
             group
             rounded-2xl
@@ -83,11 +86,11 @@ export default function QuickActions() {
           </div>
 
           <h3 className="text-lg font-semibold">
-            New Python Notebook
+            Python Lab
           </h3>
 
           <p className="mt-2 text-sm text-slate-400">
-            Launch a new notebook inside Python Lab.
+            Launch Python Lab and start coding.
           </p>
 
         </button>
@@ -138,7 +141,191 @@ export default function QuickActions() {
 
         </button>
 
-        {/* CRM */}
+        {/* AutoML */}
+
+        <button
+          onClick={() => router.push("/automl")}
+          className="
+            group
+            rounded-2xl
+            border
+            border-slate-800
+            bg-slate-900
+            p-6
+            text-left
+            transition
+            hover:border-purple-500
+            hover:bg-slate-800
+          "
+        >
+
+          <div className="mb-5 flex items-center justify-between">
+
+            <div className="rounded-xl bg-purple-600/20 p-3">
+
+              <BrainCircuit
+                className="text-purple-400"
+                size={28}
+              />
+
+            </div>
+
+            <ArrowRight
+              size={18}
+              className="opacity-40 transition group-hover:translate-x-1"
+            />
+
+          </div>
+
+          <h3 className="text-lg font-semibold">
+            AutoML
+          </h3>
+
+          <p className="mt-2 text-sm text-slate-400">
+            Build machine learning models automatically.
+          </p>
+
+        </button>
+
+        {/* AutoDL */}
+
+        <button
+          onClick={() => router.push("/autodl")}
+          className="
+            group
+            rounded-2xl
+            border
+            border-slate-800
+            bg-slate-900
+            p-6
+            text-left
+            transition
+            hover:border-cyan-500
+            hover:bg-slate-800
+          "
+        >
+
+          <div className="mb-5 flex items-center justify-between">
+
+            <div className="rounded-xl bg-cyan-600/20 p-3">
+
+              <Cpu
+                className="text-cyan-400"
+                size={28}
+              />
+
+            </div>
+
+            <ArrowRight
+              size={18}
+              className="opacity-40 transition group-hover:translate-x-1"
+            />
+
+          </div>
+
+          <h3 className="text-lg font-semibold">
+            AutoDL
+          </h3>
+
+          <p className="mt-2 text-sm text-slate-400">
+            Build and train deep learning models.
+          </p>
+
+        </button>
+
+        {/* AutoNLP */}
+
+        <button
+          onClick={() => router.push("/autonlp")}
+          className="
+            group
+            rounded-2xl
+            border
+            border-slate-800
+            bg-slate-900
+            p-6
+            text-left
+            transition
+            hover:border-amber-500
+            hover:bg-slate-800
+          "
+        >
+
+          <div className="mb-5 flex items-center justify-between">
+
+            <div className="rounded-xl bg-amber-600/20 p-3">
+
+              <Languages
+                className="text-amber-400"
+                size={28}
+              />
+
+            </div>
+
+            <ArrowRight
+              size={18}
+              className="opacity-40 transition group-hover:translate-x-1"
+            />
+
+          </div>
+
+          <h3 className="text-lg font-semibold">
+            AutoNLP
+          </h3>
+
+          <p className="mt-2 text-sm text-slate-400">
+            Build and experiment with NLP models.
+          </p>
+
+        </button>
+
+        {/* GenAI */}
+
+        <button
+          onClick={() => router.push("/genai")}
+          className="
+            group
+            rounded-2xl
+            border
+            border-slate-800
+            bg-slate-900
+            p-6
+            text-left
+            transition
+            hover:border-pink-500
+            hover:bg-slate-800
+          "
+        >
+
+          <div className="mb-5 flex items-center justify-between">
+
+            <div className="rounded-xl bg-pink-600/20 p-3">
+
+              <Sparkles
+                className="text-pink-400"
+                size={28}
+              />
+
+            </div>
+
+            <ArrowRight
+              size={18}
+              className="opacity-40 transition group-hover:translate-x-1"
+            />
+
+          </div>
+
+          <h3 className="text-lg font-semibold">
+            GenAI
+          </h3>
+
+          <p className="mt-2 text-sm text-slate-400">
+            Explore generative AI capabilities.
+          </p>
+
+        </button>
+
+        {/* CRM - Admin & Super Admin */}
 
         {isAdmin && (
 
@@ -188,7 +375,7 @@ export default function QuickActions() {
 
         )}
 
-        {/* User */}
+        {/* User Management - Super Admin Only */}
 
         {isSuperAdmin && (
 

@@ -70,21 +70,6 @@ export default function WelcomeBanner() {
           👋
         </h1>
 
-        {/* Description */}
-
-        <p
-          className="
-            mt-5
-            max-w-4xl
-            text-lg
-            leading-8
-            text-slate-400
-          "
-        >
-          Build AI models, write Python code, analyze SQL datasets,
-          manage CRM pipelines, and deploy intelligent applications
-          from one unified AI development platform.
-        </p>
 
       </div>
     </section>
