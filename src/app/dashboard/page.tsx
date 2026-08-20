@@ -4,8 +4,6 @@ import { useMemo, useState, useEffect } from "react";
 
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import SearchBar from "@/components/dashboard/SearchBar";
-import StatsCard from "@/components/dashboard/StatsCard";
 import FloatingCreateButton from "@/components/dashboard/FloatingCreateButton";
 
 import CreateNotebookModal from "@/components/notebook/CreateNotebookModal";
