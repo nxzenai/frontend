@@ -5,37 +5,37 @@ export default function ProjectsPage() {
     {
       title: "Banking & Finance",
       description:
-        "Explore how AI is used to improve decision-making, risk management, customer experience and operational efficiency.",
+        "AI applications for decision-making, fraud detection, risk management, customer intelligence and operational efficiency.",
     },
 
     {
       title: "Healthcare",
       description:
-        "Understand how AI supports healthcare workflows, diagnostics, research and patient-centric solutions.",
+        "AI applications supporting healthcare workflows, intelligent analytics, research and patient-centric solutions.",
     },
 
     {
       title: "Retail & E-Commerce",
       description:
-        "Learn how AI enhances customer insights, personalization, forecasting and business performance.",
+        "AI solutions for customer insights, personalization, demand forecasting and business performance.",
     },
 
     {
       title: "Human Resources",
       description:
-        "Discover AI applications for talent acquisition, workforce analytics and employee engagement.",
+        "AI applications for talent acquisition, workforce analytics, employee engagement and HR automation.",
     },
 
     {
       title: "Manufacturing",
       description:
-        "Explore how AI improves operational efficiency, quality management and industrial intelligence.",
+        "AI solutions for operational efficiency, predictive maintenance, quality management and industrial intelligence.",
     },
 
     {
       title: "Cross-Industry Innovation",
       description:
-        "Work on multidisciplinary AI challenges inspired by emerging business and technology trends.",
+        "AI solutions and challenge labs inspired by emerging business, data and technology requirements.",
     },
   ];
 
@@ -45,30 +45,29 @@ export default function ProjectsPage() {
       <div className="max-w-7xl mx-auto">
 
         {/* Hero */}
-
         <div className="text-center mb-16">
 
           <h1 className="text-5xl md:text-6xl font-bold mb-6">
-            Industry Challenge Labs
+            Industry AI Solutions & Challenge Labs
           </h1>
 
           <p className="text-slate-400 text-xl max-w-3xl mx-auto">
-            Move beyond theory and learn how Artificial
-            Intelligence is applied to solve real-world
-            business challenges across industries.
+            Explore how Artificial Intelligence can be applied
+            to real-world business challenges across industries
+            through practical solutions, use cases and hands-on
+            challenge labs.
           </p>
 
         </div>
 
         {/* Key Highlights */}
-
         <div className="grid md:grid-cols-4 gap-6 mb-20">
 
           {[
             "Real Business Problems",
-            "Industry Datasets",
-            "Hands-On AI Solutions",
-            "Portfolio Ready Experience",
+            "Industry Data",
+            "Practical AI Solutions",
+            "Real-World Applications",
           ].map((item) => (
             <div
               key={item}
@@ -90,7 +89,6 @@ export default function ProjectsPage() {
         </div>
 
         {/* Industry Cards */}
-
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
 
           {industries.map((industry) => (
@@ -119,8 +117,7 @@ export default function ProjectsPage() {
 
         </div>
 
-        {/* Learning Approach */}
-
+        {/* Approach */}
         <div
           className="
             mt-20
@@ -133,7 +130,7 @@ export default function ProjectsPage() {
         >
 
           <h2 className="text-3xl font-bold mb-8 text-center">
-            Our Industry Challenge Approach
+            Our AI Solution Approach
           </h2>
 
           <div className="grid md:grid-cols-5 gap-6 text-center">
@@ -144,7 +141,7 @@ export default function ProjectsPage() {
               </h3>
 
               <p className="text-slate-400 text-sm">
-                Understand the challenge
+                Understand the business challenge
               </p>
             </div>
 
@@ -154,7 +151,7 @@ export default function ProjectsPage() {
               </h3>
 
               <p className="text-slate-400 text-sm">
-                Explore industry datasets
+                Explore available data
               </p>
             </div>
 
@@ -164,7 +161,7 @@ export default function ProjectsPage() {
               </h3>
 
               <p className="text-slate-400 text-sm">
-                Develop AI solutions
+                Develop the AI solution
               </p>
             </div>
 
@@ -174,17 +171,17 @@ export default function ProjectsPage() {
               </h3>
 
               <p className="text-slate-400 text-sm">
-                Measure performance
+                Measure business and model performance
               </p>
             </div>
 
             <div>
               <h3 className="font-semibold mb-2">
-                Present
+                Deploy
               </h3>
 
               <p className="text-slate-400 text-sm">
-                Showcase outcomes
+                Move solutions toward real-world use
               </p>
             </div>
 
@@ -193,34 +190,56 @@ export default function ProjectsPage() {
         </div>
 
         {/* CTA */}
-
         <div className="text-center mt-20">
 
           <h2 className="text-4xl font-bold mb-4">
-            Ready to Solve Real Industry Problems?
+            Have an AI Challenge to Solve?
           </h2>
 
           <p className="text-slate-400 mb-8 max-w-2xl mx-auto">
-            Gain practical experience through
-            industry-inspired AI challenges and
-            hands-on learning.
+            Whether you are exploring AI for your organization
+            or developing practical AI skills, NxZenAI helps
+            turn real-world problems into AI solutions.
           </p>
 
-          <Link
-            href="/demo"
-            className="
-              inline-flex
-              bg-blue-600
-              hover:bg-blue-700
-              px-8
-              py-4
-              rounded-xl
-              font-semibold
-              transition
-            "
-          >
-            Explore NxZenAI Studio
-          </Link>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+
+            <Link
+              href="/contact"
+              className="
+                inline-flex
+                justify-center
+                bg-blue-600
+                hover:bg-blue-700
+                px-8
+                py-4
+                rounded-xl
+                font-semibold
+                transition
+              "
+            >
+              Discuss an AI Project
+            </Link>
+
+            <Link
+              href="/demo"
+              className="
+                inline-flex
+                justify-center
+                border
+                border-slate-700
+                hover:bg-slate-900
+                px-8
+                py-4
+                rounded-xl
+                font-semibold
+                transition
+              "
+            >
+              Explore NxZenAI Studio
+            </Link>
+
+          </div>
 
         </div>
 

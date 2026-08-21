@@ -6,9 +6,9 @@ import { usePathname } from "next/navigation";
 
 const navigation = [
   { name: "Home", href: "/" },
-  { name: "Programs", href: "/programs" },
+  { name: "AI Training", href: "/programs" },
   { name: "Curriculum", href: "/curriculum" },
-  { name: "Projects", href: "/projects" },
+  { name: "Industry Solutions", href: "/projects" },
   { name: "Demo", href: "/demo" },
   { name: "Contact", href: "/contact" },
 ];
@@ -59,12 +59,12 @@ export default function Navbar() {
         ====================================================== */}
         <div className="hidden items-center gap-4 md:flex">
 
-          {/* Book Demo */}
+          {/* Consultation */}
           <Link
-            href="/demo"
-            className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700"
+            href="/contact"
+            className="rounded-xl border border-slate-700 px-5 py-3 font-semibold text-white transition hover:border-blue-500 hover:bg-slate-900"
           >
-            Book Demo
+            AI Consultation
           </Link>
 
           {/* AI Studio */}
@@ -153,14 +153,14 @@ export default function Navbar() {
           })}
 
           {/* =================================================
-              MOBILE BOOK DEMO
+              MOBILE CONSULTATION
           ================================================== */}
           <Link
-            href="/demo"
+            href="/contact"
             onClick={() => setMobileOpen(false)}
-            className="mt-5 rounded-xl bg-blue-600 px-4 py-3 text-center font-semibold text-white transition hover:bg-blue-700"
+            className="mt-5 rounded-xl border border-slate-700 px-4 py-3 text-center font-semibold text-white transition hover:border-blue-500 hover:bg-slate-900"
           >
-            Book Demo
+            AI Consultation
           </Link>
 
           {/* =================================================

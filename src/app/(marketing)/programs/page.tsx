@@ -50,16 +50,16 @@ export default function ProgramsPage() {
     {
       title: "AI for Organizations",
       audience:
-        "Organizations, Universities and Corporate Teams.",
+        "Organizations, Universities, Leadership Teams and Corporate Teams.",
       skills: [
         "Executive AI Awareness",
         "AI Productivity",
         "Prompt Engineering",
-        "Custom AI Solutions",
+        "Generative AI",
         "AI Governance",
       ],
       outcome:
-        "Accelerate AI adoption, productivity and digital transformation across teams.",
+        "Build AI capabilities across teams and accelerate responsible AI adoption, productivity and digital transformation.",
     },
   ];
 
@@ -69,17 +69,15 @@ export default function ProgramsPage() {
 
         {/* Hero */}
         <div className="text-center mb-16">
-
           <h1 className="text-5xl md:text-6xl font-bold mb-6">
-            Our Programs
+            AI Training Programs
           </h1>
 
           <p className="text-slate-400 text-xl max-w-3xl mx-auto">
-            Structured AI learning pathways designed to
-            take learners from foundations to
-            enterprise-scale AI systems.
+            Structured AI learning pathways for students,
+            professionals and organizations — from fundamentals
+            to enterprise-scale AI systems.
           </p>
-
         </div>
 
         {/* Programs Grid */}
@@ -106,7 +104,6 @@ export default function ProgramsPage() {
 
               {/* Audience */}
               <div className="mb-6">
-
                 <h3 className="font-semibold text-white mb-2">
                   Who is this for?
                 </h3>
@@ -114,18 +111,15 @@ export default function ProgramsPage() {
                 <p className="text-slate-400">
                   {program.audience}
                 </p>
-
               </div>
 
               {/* Skills */}
               <div className="mb-6">
-
                 <h3 className="font-semibold text-white mb-3">
                   Key Skills
                 </h3>
 
                 <div className="flex flex-wrap gap-2">
-
                   {program.skills.map((skill) => (
                     <span
                       key={skill}
@@ -143,14 +137,11 @@ export default function ProgramsPage() {
                       {skill}
                     </span>
                   ))}
-
                 </div>
-
               </div>
 
               {/* Outcome */}
               <div className="mb-8">
-
                 <h3 className="font-semibold text-white mb-2">
                   Outcome
                 </h3>
@@ -158,12 +149,10 @@ export default function ProgramsPage() {
                 <p className="text-slate-400">
                   {program.outcome}
                 </p>
-
               </div>
 
               {/* CTA */}
-              <div className="flex gap-4">
-
+              <div className="flex flex-wrap gap-4">
                 <Link
                   href="/curriculum"
                   className="
@@ -193,7 +182,6 @@ export default function ProgramsPage() {
                 >
                   Book Consultation
                 </Link>
-
               </div>
 
             </div>
@@ -213,15 +201,14 @@ export default function ProgramsPage() {
             text-center
           "
         >
-
           <h2 className="text-4xl font-bold mb-4">
-            Not Sure Which Program Fits You?
+            Find the Right AI Program
           </h2>
 
           <p className="text-slate-400 max-w-2xl mx-auto mb-8">
-            Speak with our team and receive a personalized
-            AI learning roadmap based on your goals,
-            experience and career aspirations.
+            Speak with our team to identify the right learning,
+            professional development or organizational AI training
+            pathway for your goals.
           </p>
 
           <Link
@@ -239,7 +226,6 @@ export default function ProgramsPage() {
           >
             Schedule a Consultation
           </Link>
-
         </div>
 
       </div>

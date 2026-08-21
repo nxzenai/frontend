@@ -9,7 +9,6 @@ export default function ContactPage() {
       <div className="max-w-6xl mx-auto">
 
         {/* Hero */}
-
         <div className="text-center mb-16">
 
           <h1 className="text-5xl md:text-6xl font-bold mb-6">
@@ -17,15 +16,14 @@ export default function ContactPage() {
           </h1>
 
           <p className="text-slate-400 text-xl max-w-3xl mx-auto">
-            Whether you're a student, professional,
-            organization or institution, we're here
-            to help you navigate your AI journey.
+            Whether you're exploring AI for your business,
+            building AI capabilities within your organization,
+            or advancing your own AI skills, we're here to help.
           </p>
 
         </div>
 
         {/* Contact Cards */}
-
         <div className="grid md:grid-cols-3 gap-8 mb-16">
 
           <div className="bg-slate-950 border border-slate-800 rounded-3xl p-8 text-center">
@@ -71,7 +69,7 @@ export default function ContactPage() {
             </h3>
 
             <p className="text-slate-400">
-              Free AI Career & Program Guidance
+              AI Solutions, Training & Program Guidance
             </p>
 
           </div>
@@ -79,7 +77,6 @@ export default function ContactPage() {
         </div>
 
         {/* Who We Work With */}
-
         <div className="bg-slate-950 border border-slate-800 rounded-3xl p-10 mb-16">
 
           <h2 className="text-3xl font-bold text-center mb-10">
@@ -105,7 +102,7 @@ export default function ContactPage() {
             <div className="border border-slate-800 rounded-2xl p-6">
               🚀
               <p className="mt-3">
-                Entrepreneurs
+                Startups & Entrepreneurs
               </p>
             </div>
 
@@ -121,7 +118,6 @@ export default function ContactPage() {
         </div>
 
         {/* Services */}
-
         <div className="bg-slate-950 border border-slate-800 rounded-3xl p-10 mb-16">
 
           <h2 className="text-3xl font-bold text-center mb-10">
@@ -131,19 +127,47 @@ export default function ContactPage() {
           <div className="grid md:grid-cols-2 gap-6">
 
             <div className="border border-slate-800 rounded-2xl p-6">
-              AI Learning Programs
+              <h3 className="font-semibold mb-2">
+                AI Consultancy & Solutions
+              </h3>
+
+              <p className="text-slate-400 text-sm">
+                AI strategy, custom solutions, Generative AI,
+                automation and machine learning.
+              </p>
             </div>
 
             <div className="border border-slate-800 rounded-2xl p-6">
-              NxZenAI Studio Access
+              <h3 className="font-semibold mb-2">
+                AI Training Programs
+              </h3>
+
+              <p className="text-slate-400 text-sm">
+                Structured AI learning pathways for students
+                and working professionals.
+              </p>
             </div>
 
             <div className="border border-slate-800 rounded-2xl p-6">
-              Industry Challenge Labs
+              <h3 className="font-semibold mb-2">
+                Corporate AI Training
+              </h3>
+
+              <p className="text-slate-400 text-sm">
+                Practical AI enablement and upskilling programs
+                for teams and organizations.
+              </p>
             </div>
 
             <div className="border border-slate-800 rounded-2xl p-6">
-              AI for Organizations
+              <h3 className="font-semibold mb-2">
+                NxZenAI Studio
+              </h3>
+
+              <p className="text-slate-400 text-sm">
+                Hands-on AI experimentation, development
+                and learning through the NxZenAI platform.
+              </p>
             </div>
 
           </div>
@@ -151,16 +175,16 @@ export default function ContactPage() {
         </div>
 
         {/* CTA */}
-
         <div className="text-center">
 
           <h2 className="text-4xl font-bold mb-4">
-            Ready to Begin?
+            Ready to Get Started?
           </h2>
 
-          <p className="text-slate-400 mb-8">
-            Schedule a consultation and discover
-            the right AI learning path for you.
+          <p className="text-slate-400 mb-8 max-w-2xl mx-auto">
+            Talk with our team about your AI project,
+            organizational training requirements or
+            professional learning goals.
           </p>
 
           <div className="flex flex-col md:flex-row justify-center gap-4">
@@ -177,7 +201,7 @@ export default function ContactPage() {
                 transition
               "
             >
-              Book Studio Demo
+              Schedule a Consultation
             </Link>
 
             <Link
@@ -192,7 +216,7 @@ export default function ContactPage() {
                 transition
               "
             >
-              Explore Programs
+              Explore Training Programs
             </Link>
 
           </div>
