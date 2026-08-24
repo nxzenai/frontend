@@ -12,6 +12,7 @@ import { useNotebookEditor } from "@/contexts/NotebookEditorContext";
 
 import CellOutput from "./CellOutput";
 import { persistThenRun } from "@/utils/notebookExecution";
+import { executionShortcut } from "@/utils/notebookCommands";
 
 interface CodeCellProps {
   cell: Cell;
@@ -25,6 +26,7 @@ export default function CodeCell({
     executeCell,
     focusNextCell,
     setCells,
+    activeCellId,
   } = useNotebookEditor();
 
   const [code, setCode] = useState(
@@ -33,6 +35,11 @@ export default function CodeCell({
 
   const debounceTimer =
     useRef<NodeJS.Timeout | null>(null);
+  const editorRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    if (activeCellId === cell.id) editorRef.current?.focus();
+  }, [activeCellId, cell.id]);
 
   //////////////////////////////////////////////////////
   // Autosave (500ms debounce)
@@ -71,10 +78,8 @@ export default function CodeCell({
   async function handleKeyDown(
     e: React.KeyboardEvent<HTMLTextAreaElement>
   ) {
-    if (
-      e.key === "Enter" &&
-      e.shiftKey
-    ) {
+    const shortcut = executionShortcut(e);
+    if (shortcut) {
       e.preventDefault();
 
       if (debounceTimer.current) {
@@ -85,9 +90,7 @@ export default function CodeCell({
 
       await persistThenRun(cell.id, code, updateCell, executeCell);
 
-      focusNextCell(
-        cell.id
-      );
+      if (shortcut === "run-next") await focusNextCell(cell.id);
     }
   }
 
@@ -106,13 +109,14 @@ export default function CodeCell({
         </span>
 
         <span className="rounded bg-slate-800 px-2 py-1 text-[10px] text-slate-400">
-          Shift + Enter to Run
+          Shift+Enter run/next · Ctrl/Cmd+Enter run
         </span>
 
       </div>
 
       {/* Editor */}
       <textarea
+        ref={editorRef}
         value={code}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
@@ -139,6 +143,7 @@ export default function CodeCell({
         executionCount={
           cell.execution_count
         }
+        executionDurationMs={cell.execution_duration_ms}
       />
 
     </div>

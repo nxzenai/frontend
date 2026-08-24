@@ -27,11 +27,14 @@ export interface Cell {
   position: number;
   created_at: string;
   updated_at: string;
+  execution_state: "idle" | "running" | "succeeded" | "failed";
+  execution_duration_ms: number | null;
 }
 
 export interface CreateCellRequest {
   cell_type: CellType;
   source: string;
+  position?: number;
 }
 
 export interface UpdateCellRequest {
@@ -58,4 +61,31 @@ export interface CellPosition {
 
 export interface ReorderCellsRequest {
   cells: CellPosition[];
+}
+
+export interface NotebookFile {
+  id: string;
+  original_filename: string;
+  runtime_path: string;
+  content_type: string;
+  size_bytes: number;
+  created_at: string;
+}
+
+export interface RuntimePackage {
+  name: string;
+  installed: boolean;
+  version: string | null;
+  error: string | null;
+}
+
+export interface RuntimeInfo {
+  notebook_id: string;
+  status: string;
+  python_version: string;
+  packages: RuntimePackage[];
+  cpu_available: boolean;
+  gpu_available: boolean;
+  gpu_details: string | null;
+  execution_boundary: string;
 }

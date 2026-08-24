@@ -29,3 +29,10 @@ export interface UpdateNotebookRequest {
   visibility?: "private" | "public";
   tags?: string[];
 }
+
+export interface NotebookExample {
+  slug: string;
+  title: string;
+  description: string;
+  category: string;
+}

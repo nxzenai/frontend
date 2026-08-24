@@ -16,6 +16,7 @@ export default function NotebookToolbar() {
     clearAllOutputs,
     kernelStatus,
     saveStatus,
+    restartAndRunAll,
   } = useNotebookEditor();
   const controls = kernelControlState(kernelStatus, saving, saveStatus);
 
@@ -38,6 +39,15 @@ export default function NotebookToolbar() {
           className="rounded-lg border border-slate-700 px-5 py-2 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Restart Kernel
+        </button>
+
+        <button
+          type="button"
+          onClick={restartAndRunAll}
+          disabled={controls.restartDisabled}
+          className="rounded-lg border border-slate-700 px-4 py-2 transition hover:bg-slate-800 disabled:opacity-50"
+        >
+          Restart & Run All
         </button>
 
         <button

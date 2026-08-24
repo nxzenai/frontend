@@ -6,6 +6,7 @@ import { sanitizeNotebookHtml } from "@/utils/sanitizeNotebookHtml";
 interface Props {
   outputs: CellOutputValue[];
   executionCount?: number | null;
+  executionDurationMs?: number | null;
 }
 
 function asRichContent(value: CellOutputValue["content"]): RichOutputContent {
@@ -21,7 +22,7 @@ function dataString(content: RichOutputContent, mime: string): string | null {
   return null;
 }
 
-export default function CellOutput({ outputs, executionCount }: Props) {
+export default function CellOutput({ outputs, executionCount, executionDurationMs }: Props) {
   if (!outputs.length) return null;
 
   return (
@@ -30,6 +31,7 @@ export default function CellOutput({ outputs, executionCount }: Props) {
         <span className="rounded bg-green-700 px-2 py-1 text-xs font-bold text-white">
           Out [{executionCount ?? "-"}]
         </span>
+        {executionDurationMs != null && <span className="text-xs text-slate-400">{executionDurationMs.toFixed(0)} ms</span>}
       </div>
 
       <div className="space-y-4 p-5">
@@ -37,7 +39,13 @@ export default function CellOutput({ outputs, executionCount }: Props) {
           if (output.output_type === "stream") {
             const content = asRichContent(output.content);
             const stream = typeof output.content === "string" ? output.content : content.text ?? "";
-            return <pre key={index} className="whitespace-pre-wrap rounded-lg bg-slate-900 p-4 font-mono text-sm text-green-300">{stream}</pre>;
+            const streamName = content.name ?? output.metadata?.name;
+            const truncated = output.metadata?.truncated === true;
+            return (
+              <pre key={index} className={`whitespace-pre-wrap rounded-lg bg-slate-900 p-4 font-mono text-sm ${truncated ? "border border-amber-700 text-amber-200" : streamName === "stderr" ? "text-red-300" : "text-green-300"}`}>
+                {stream}
+              </pre>
+            );
           }
 
           if (output.output_type === "error") {

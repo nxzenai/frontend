@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import notebookService from "@/services/notebook.service";
 import type { Notebook } from "@/types/notebook";
+import type { NotebookExample } from "@/types/notebook";
 
 export default function NotebookList() {
   const router = useRouter();
@@ -13,6 +14,8 @@ export default function NotebookList() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [examples, setExamples] = useState<NotebookExample[]>([]);
+  const importRef = useRef<HTMLInputElement | null>(null);
 
   // ============================================================
   // LOAD NOTEBOOKS
@@ -23,9 +26,12 @@ export default function NotebookList() {
       setLoading(true);
       setError(null);
 
-      const data = await notebookService.getAll();
+      const [data, availableExamples] = await Promise.all([
+        notebookService.getAll(), notebookService.examples(),
+      ]);
 
       setNotebooks(Array.isArray(data) ? data : []);
+      setExamples(availableExamples);
     } catch (err) {
       console.error("Failed to load notebooks:", err);
 
@@ -78,6 +84,24 @@ export default function NotebookList() {
     router.push(`/notebooks/${id}`);
   }
 
+  async function handleCreateExample(slug: string) {
+    try {
+      setCreating(true); setError(null);
+      const created = await notebookService.createExample(slug);
+      router.push(`/notebooks/${created.id}`);
+    } catch { setError("Unable to create example notebook."); }
+    finally { setCreating(false); }
+  }
+
+  async function handleImport(file: File) {
+    try {
+      setCreating(true); setError(null);
+      const imported = await notebookService.importIPYNB(file);
+      router.push(`/notebooks/${imported.id}`);
+    } catch { setError("Unable to import this .ipynb notebook."); }
+    finally { setCreating(false); }
+  }
+
   // ============================================================
   // LOADING
   // ============================================================
@@ -103,16 +127,15 @@ export default function NotebookList() {
 
       <div className="flex items-center justify-between">
 
-        <div>
-          <h2 className="text-2xl font-bold text-white">
-            Python Labs
-          </h2>
 
-          <p className="mt-2 text-slate-400">
-            Create and run Python notebooks in the AI Studio.
-          </p>
-        </div>
 
+        <div className="flex gap-3">
+        <input ref={importRef} type="file" accept=".ipynb,application/x-ipynb+json" className="hidden" onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) void handleImport(file);
+          event.currentTarget.value = "";
+        }} />
+        <button type="button" onClick={() => importRef.current?.click()} disabled={creating} className="rounded-xl border border-slate-700 px-6 py-3 font-semibold text-white hover:bg-slate-800 disabled:opacity-50">Import .ipynb</button>
         <button
           type="button"
           onClick={handleCreateNotebook}
@@ -134,6 +157,7 @@ export default function NotebookList() {
         >
           {creating ? "Creating..." : "+ New Lab"}
         </button>
+        </div>
 
       </div>
 
@@ -141,6 +165,7 @@ export default function NotebookList() {
 
       {error && (
         <div
+          role="alert"
           className="
             rounded-xl
             border
@@ -152,6 +177,21 @@ export default function NotebookList() {
         >
           {error}
         </div>
+      )}
+
+      {examples.length > 0 && (
+        <section aria-labelledby="examples-title">
+          <h3 id="examples-title" className="mb-3 text-lg font-semibold text-white">Start from an example</h3>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {examples.map((example) => (
+              <button key={example.slug} type="button" disabled={creating} onClick={() => void handleCreateExample(example.slug)} className="rounded-xl border border-slate-700 bg-slate-900 p-4 text-left hover:border-blue-500 disabled:opacity-50">
+                <span className="text-xs uppercase tracking-wide text-blue-400">{example.category}</span>
+                <strong className="mt-1 block text-white">{example.title}</strong>
+                <span className="mt-1 block text-xs text-slate-400">{example.description}</span>
+              </button>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* Empty State */}
