@@ -6,6 +6,7 @@ import NotebookHeader from "./NotebookHeader";
 import NotebookToolbar from "./NotebookToolbar";
 import NotebookStatusBar from "./NotebookStatusBar";
 import CellList from "./CellList";
+import NotebookSidebar from "./NotebookSidebar";
 
 export default function NotebookEditor() {
   const { notebook, loading, error } = useNotebookEditor();
@@ -57,11 +58,12 @@ export default function NotebookEditor() {
       )}
 
       {/* Notebook Workspace */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-7xl px-8 py-8">
-          <CellList />
-        </div>
-      </main>
+      <div className="flex min-h-0 flex-1">
+        <NotebookSidebar />
+        <main className="flex-1 overflow-y-auto">
+          <div className="mx-auto w-full max-w-7xl px-8 py-8"><CellList /></div>
+        </main>
+      </div>
 
       {/* Status Bar */}
       <NotebookStatusBar />

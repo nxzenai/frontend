@@ -23,7 +23,13 @@ export default function CellContainer({
     duplicateCell,
     updateCell,
     clearCellOutputs,
+    runAbove,
+    runBelow,
+    moveCell,
+    insertCell,
+    executionState,
   } = useNotebookEditor();
+  const state = executionState(cell.id);
 
   /**
    * Execute Cell
@@ -77,6 +83,9 @@ export default function CellContainer({
           <span className="text-xs text-slate-500">
             Cell {cell.position + 1}
           </span>
+          <span className={`text-xs ${state === "failed" ? "text-red-400" : state === "running" ? "text-amber-300" : "text-slate-400"}`} aria-live="polite">
+            {state}{cell.execution_duration_ms != null ? ` · ${cell.execution_duration_ms.toFixed(0)} ms` : ""}
+          </span>
         </div>
 
         <CellToolbar
@@ -84,6 +93,13 @@ export default function CellContainer({
           onDelete={handleDelete}
           onDuplicate={handleDuplicate}
           onClear={cell.cell_type === "code" ? () => clearCellOutputs(cell.id) : undefined}
+          onRunAbove={() => runAbove(cell.id)}
+          onRunBelow={() => runBelow(cell.id)}
+          onMoveUp={() => moveCell(cell.id, -1)}
+          onMoveDown={() => moveCell(cell.id, 1)}
+          onInsertAbove={(type) => insertCell(cell.id, "above", type)}
+          onInsertBelow={(type) => insertCell(cell.id, "below", type)}
+          disabled={state === "running"}
         />
       </div>
 

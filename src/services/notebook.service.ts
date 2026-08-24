@@ -3,6 +3,7 @@ import {
   NotebookResponse,
   CreateNotebookRequest,
   UpdateNotebookRequest,
+  NotebookExample,
 } from "@/types/notebook";
 
 class NotebookService {
@@ -42,6 +43,23 @@ class NotebookService {
 
   async delete(id: string) {
     await api.delete(`/notebooks/${id}`);
+  }
+
+  async examples(): Promise<NotebookExample[]> {
+    const response = await api.get<{ data: NotebookExample[] }>("/notebooks/examples");
+    return response.data.data;
+  }
+
+  async createExample(slug: string) {
+    const response = await api.post(`/notebooks/examples/${encodeURIComponent(slug)}`);
+    return response.data.data;
+  }
+
+  async importIPYNB(file: File) {
+    const form = new FormData();
+    form.append("upload", file);
+    const response = await api.post("/notebooks/import/ipynb", form);
+    return response.data.data;
   }
 }
 

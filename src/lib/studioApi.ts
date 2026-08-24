@@ -8,9 +8,7 @@ const studioApiUrl = validateStudioApiUrl(
 
 const studioApi = axios.create({
   baseURL: studioApiUrl,
-  headers: {
-    "Content-Type": "application/json",
-  },
+
 });
 
 studioApi.interceptors.request.use((config) => {

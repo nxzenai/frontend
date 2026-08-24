@@ -8,6 +8,8 @@ import type {
   UpdateCellRequest,
   ReorderCellsRequest,
   CellOutputValue,
+  NotebookFile,
+  RuntimeInfo,
 } from "@/types/cell";
 
 //////////////////////////////////////////////////////////
@@ -19,6 +21,7 @@ export interface ExecuteCellResponse {
   cell_id: string;
   execution_count: number;
   outputs: CellOutputValue[];
+  execution_duration_ms: number | null;
 }
 
 class CellService {
@@ -167,6 +170,51 @@ class CellService {
         `/notebooks/${notebookId}/kernel/status`,
       );
 
+    return response.data;
+  }
+
+  async runtimeInfo(notebookId: string): Promise<RuntimeInfo> {
+    const response = await api.get<RuntimeInfo>(`/notebooks/${notebookId}/runtime/info`);
+    return response.data;
+  }
+
+  async listFiles(notebookId: string): Promise<NotebookFile[]> {
+    const response = await api.get<{ data: NotebookFile[] }>(`/notebooks/${notebookId}/files`);
+    return response.data.data;
+  }
+
+async uploadFile(
+  notebookId: string,
+  file: File,
+  onProgress: (percent: number) => void,
+): Promise<NotebookFile> {
+  const form = new FormData();
+
+  form.append("file", file);
+
+  const response = await api.post<{ data: NotebookFile }>(
+    `/notebooks/${notebookId}/files`,
+    form,
+    {
+      onUploadProgress: (event) => {
+        if (event.total) {
+          onProgress(
+            Math.round((event.loaded / event.total) * 100)
+          );
+        }
+      },
+    },
+  );
+
+  return response.data.data;
+}
+
+  async deleteFile(notebookId: string, fileId: string): Promise<void> {
+    await api.delete(`/notebooks/${notebookId}/files/${fileId}`);
+  }
+
+  async downloadFile(notebookId: string, fileId: string): Promise<Blob> {
+    const response = await api.get(`/notebooks/${notebookId}/files/${fileId}/download`, { responseType: "blob" });
     return response.data;
   }
 

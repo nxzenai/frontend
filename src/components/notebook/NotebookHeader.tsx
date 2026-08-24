@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import useNotebookEditor from "@/hooks/useNotebookEditor";
 
 export default function NotebookHeader() {
-  const { notebook } = useNotebookEditor();
+  const { notebook, updateNotebookTitle, saveStatus } = useNotebookEditor();
+  const [title, setTitle] = useState("");
+
+  useEffect(() => { if (notebook) setTitle(notebook.title); }, [notebook]);
 
   if (!notebook) return null;
 
@@ -22,9 +26,16 @@ export default function NotebookHeader() {
             ← Back to Dashboard
           </Link>
 
-          <h1 className="mt-2 text-3xl font-bold">
-            {notebook.title}
-          </h1>
+          <label className="sr-only" htmlFor="notebook-title">Notebook title</label>
+          <input
+            id="notebook-title"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            onBlur={() => void updateNotebookTitle(title)}
+            onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
+            className="mt-2 w-full max-w-2xl rounded bg-transparent text-3xl font-bold outline-none ring-blue-500 focus:ring-2"
+          />
+          <span className="sr-only" aria-live="polite">{saveStatus}</span>
 
           <p className="mt-2 text-slate-400">
             {notebook.description || "No description"}
