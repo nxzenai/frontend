@@ -1,98 +1,316 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import {
+    useCallback,
+    useState,
+} from "react";
 
 import AutoDLService from "@/services/autodl.service";
 
 import {
     AutoDLJobResponse,
+    AutoDLPredictionResponse,
     Modality,
     DLArchitecture,
 } from "@/types/autodl";
 
+
 export default function useAutoDLJob() {
 
-    //////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////
     // State
-    //////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////
 
-    const [job, setJob] =
-        useState<AutoDLJobResponse | null>(null);
+    const [
+        job,
+        setJob,
+    ] =
+        useState<AutoDLJobResponse | null>(
+            null
+        );
 
-    const [loading, setLoading] =
+
+    const [
+        prediction,
+        setPrediction,
+    ] =
+        useState<AutoDLPredictionResponse | null>(
+            null
+        );
+
+
+    const [
+        loading,
+        setLoading,
+    ] =
         useState(false);
 
-    const [error, setError] =
-        useState<string | null>(null);
 
-    //////////////////////////////////////////////////////////
+    const [
+        predicting,
+        setPredicting,
+    ] =
+        useState(false);
+
+
+    const [
+        error,
+        setError,
+    ] =
+        useState<string | null>(
+            null
+        );
+
+
+    ////////////////////////////////////////////////////////////
+    // Error Helper
+    ////////////////////////////////////////////////////////////
+
+    const getErrorMessage = (
+        err: any,
+        fallback: string,
+    ) => {
+
+        return (
+            err?.response?.data?.detail ??
+            err?.response?.data?.message ??
+            err?.message ??
+            fallback
+        );
+    };
+
+
+    ////////////////////////////////////////////////////////////
     // Start Training
-    //////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////
 
     const startTraining =
-        useCallback(async (
+        useCallback(
+            async (
+                file: File,
+                modality: Modality,
+                architecture: DLArchitecture,
+                maxEpochs: number,
+            ) => {
 
-            file: File,
+                try {
 
-            modality: Modality,
+                    setLoading(true);
 
-            architecture: DLArchitecture,
+                    setError(null);
 
-            maxEpochs: number,
+                    setPrediction(null);
 
-        ) => {
 
-            try {
+                    const newJob =
+                        await AutoDLService.startJob(
+                            file,
+                            modality,
+                            architecture,
+                            maxEpochs,
+                        );
 
-                setLoading(true);
 
-                setError(null);
-
-                const newJob =
-                    await AutoDLService.startJob(
-                        file,
-                        modality,
-                        architecture,
-                        maxEpochs,
+                    setJob(
+                        newJob
                     );
 
-                setJob(newJob);
 
-                return newJob;
+                    return newJob;
 
-            } catch (err: any) {
+                } catch (err: any) {
 
-                console.error(err);
+                    console.error(
+                        err
+                    );
 
-                setError(
-                    err?.response?.data?.message ??
-                    "Failed to start AutoDL training job."
+
+                    const message =
+                        getErrorMessage(
+                            err,
+                            "Failed to start AutoDL training job.",
+                        );
+
+
+                    setError(
+                        message
+                    );
+
+
+                    throw err;
+
+                } finally {
+
+                    setLoading(
+                        false
+                    );
+                }
+            },
+            [],
+        );
+
+
+    ////////////////////////////////////////////////////////////
+    // Refresh Job
+    ////////////////////////////////////////////////////////////
+
+    const refreshJob =
+        useCallback(
+            async (
+                jobId: string,
+            ) => {
+
+                try {
+
+                    setError(null);
+
+
+                    const updatedJob =
+                        await AutoDLService.getJob(
+                            jobId
+                        );
+
+
+                    setJob(
+                        updatedJob
+                    );
+
+
+                    return updatedJob;
+
+                } catch (err: any) {
+
+                    console.error(
+                        err
+                    );
+
+
+                    const message =
+                        getErrorMessage(
+                            err,
+                            "Failed to retrieve AutoDL job.",
+                        );
+
+
+                    setError(
+                        message
+                    );
+
+
+                    throw err;
+                }
+            },
+            [],
+        );
+
+
+    ////////////////////////////////////////////////////////////
+    // Predict
+    ////////////////////////////////////////////////////////////
+
+    const predict =
+        useCallback(
+            async (
+                jobId: string,
+                file: File,
+            ) => {
+
+                try {
+
+                    setPredicting(
+                        true
+                    );
+
+                    setError(
+                        null
+                    );
+
+
+                    const result =
+                        await AutoDLService.predict(
+                            jobId,
+                            file,
+                        );
+
+
+                    setPrediction(
+                        result
+                    );
+
+
+                    return result;
+
+                } catch (err: any) {
+
+                    console.error(
+                        err
+                    );
+
+
+                    const message =
+                        getErrorMessage(
+                            err,
+                            "AutoDL prediction failed.",
+                        );
+
+
+                    setError(
+                        message
+                    );
+
+
+                    throw err;
+
+                } finally {
+
+                    setPredicting(
+                        false
+                    );
+                }
+            },
+            [],
+        );
+
+
+    ////////////////////////////////////////////////////////////
+    // Clear Prediction
+    ////////////////////////////////////////////////////////////
+
+    const clearPrediction =
+        useCallback(
+            () => {
+
+                setPrediction(
+                    null
                 );
 
-                throw err;
+            },
+            [],
+        );
 
-            } finally {
 
-                setLoading(false);
-
-            }
-
-        }, []);
-
-    //////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////
     // Return
-    //////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////
 
     return {
 
         job,
 
+        prediction,
+
         loading,
+
+        predicting,
 
         error,
 
         startTraining,
 
-    };
+        refreshJob,
 
+        predict,
+
+        clearPrediction,
+    };
 }
