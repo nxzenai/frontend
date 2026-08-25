@@ -10,6 +10,7 @@ import {
 
 import {
   getPredictionErrorMessage,
+  predictCsv,
   predictValues,
 } from "@/services/automl.service";
 
@@ -120,6 +121,28 @@ function displayValue(
   return String(value);
 }
 
+function displayRegressionValue(
+  value: PredictionValue | undefined
+): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return displayValue(value);
+  }
+
+  return value.toFixed(3).replace(/\.?0+$/, "");
+}
+
+function displaySegmentLabel(
+  label: string | undefined,
+  cluster: PredictionValue | undefined
+): string {
+  const fallbackPattern = /^Customer Segment\s+[-\w]+$/i;
+  const candidate = label ?? `Customer Segment ${displayValue(cluster)}`;
+
+  return fallbackPattern.test(candidate)
+    ? "Mixed-Profile Customers"
+    : candidate;
+}
+
 function PredictionResult({
   result,
 }: {
@@ -127,6 +150,126 @@ function PredictionResult({
 }) {
   const prediction =
     result.predictions[0];
+
+  if (
+    result.task === "clustering" &&
+    result.predictions.length > 1
+  ) {
+    return (
+      <div className="overflow-hidden rounded-xl border border-slate-800">
+        <div className="border-b border-slate-800 bg-slate-950 px-4 py-3">
+          <p className="text-sm font-semibold text-slate-200">
+            {result.rows} segment assignments
+          </p>
+        </div>
+        <div className="max-h-80 overflow-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="sticky top-0 bg-slate-950 text-slate-400">
+              <tr>
+                <th className="px-3 py-2 font-medium">Row</th>
+                <th className="px-3 py-2 font-medium">Assigned Segment</th>
+                <th className="px-3 py-2 font-medium">Technical Cluster</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.predictions.map((value, index) => (
+                <tr key={index} className="border-t border-slate-800">
+                  <td className="px-3 py-2 text-slate-500">{index + 1}</td>
+                  <td className="break-words px-3 py-2 font-medium text-slate-200">
+                    {displaySegmentLabel(result.segment_labels?.[index], value)}
+                  </td>
+                  <td className="break-words px-3 py-2 text-slate-300">
+                    {result.technical_clusters?.[index] ?? `Cluster ${displayValue(value)}`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  if (
+    result.task === "classification" &&
+    result.predictions.length > 1
+  ) {
+    return (
+      <div className="max-h-80 overflow-auto rounded-xl border border-slate-800">
+        <table className="w-full text-left text-xs">
+          <thead className="sticky top-0 bg-slate-950 text-slate-400">
+            <tr>
+              <th className="px-3 py-2 font-medium">Row</th>
+              <th className="px-3 py-2 font-medium">Class Meaning</th>
+              <th className="px-3 py-2 font-medium">Encoded Class</th>
+              <th className="px-3 py-2 font-medium">Confidence</th>
+            </tr>
+          </thead>
+          <tbody>
+            {result.predictions.map((value, index) => (
+              <tr key={index} className="border-t border-slate-800">
+                <td className="px-3 py-2 text-slate-500">{index + 1}</td>
+                <td className="break-words px-3 py-2 text-slate-200">
+                  {result.prediction_meanings?.[index] ?? displayValue(value)}
+                </td>
+                <td className="px-3 py-2 text-slate-300">
+                  {result.encoded_predictions?.[index] ?? "Unavailable"}
+                </td>
+                <td className="px-3 py-2 text-slate-300">
+                  {typeof result.prediction_confidences?.[index] === "number"
+                    ? `${(result.prediction_confidences[index]! * 100).toFixed(2)}%`
+                    : "Unavailable"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  if (result.predictions.length > 1) {
+    return (
+      <div className="overflow-hidden rounded-xl border border-slate-800">
+        <div className="border-b border-slate-800 bg-slate-950 px-4 py-3">
+          <p className="text-sm font-semibold text-slate-200">
+            {result.rows} row predictions
+          </p>
+        </div>
+        <div className="max-h-80 overflow-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="sticky top-0 bg-slate-950 text-slate-400">
+              <tr>
+                <th className="px-3 py-2 font-medium">Row</th>
+                <th className="px-3 py-2 font-medium">Prediction</th>
+                {(result.prediction_meanings || result.prediction_labels) && (
+                  <th className="px-3 py-2 font-medium">Meaning</th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {result.predictions.map((value, index) => (
+                <tr key={index} className="border-t border-slate-800">
+                  <td className="px-3 py-2 text-slate-500">{index + 1}</td>
+                  <td className="break-words px-3 py-2 font-medium text-slate-200">
+                    {result.task === "regression"
+                      ? displayRegressionValue(value)
+                      : displayValue(value)}
+                  </td>
+                  {(result.prediction_meanings || result.prediction_labels) && (
+                    <td className="break-words px-3 py-2 text-slate-400">
+                      {result.prediction_labels?.[index] ??
+                        result.prediction_meanings?.[index] ?? ""}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
 
   if (
     result.task === "classification"
@@ -143,10 +286,24 @@ function PredictionResult({
       <div className="space-y-3">
         <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-400">
-            Predicted class
+            Class Meaning
           </p>
           <p className="mt-2 break-words text-xl font-bold text-white">
-            {displayValue(prediction)}
+            {result.prediction_meanings?.[0] ?? displayValue(prediction)}
+          </p>
+          <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-emerald-400">
+            Encoded Class
+          </p>
+          <p className="mt-1 text-sm text-emerald-100">
+            {result.encoded_predictions?.[0] ?? "Unavailable"}
+          </p>
+          <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-emerald-400">
+            Confidence
+          </p>
+          <p className="mt-1 text-sm text-emerald-100">
+            {typeof result.prediction_confidences?.[0] === "number"
+              ? `${(result.prediction_confidences[0]! * 100).toFixed(2)}%`
+              : "Unavailable"}
           </p>
         </div>
 
@@ -198,32 +355,42 @@ function PredictionResult({
     return (
       <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-emerald-400">
-          Predicted value
+          Predicted Value
         </p>
         <p className="mt-2 break-words text-xl font-bold text-white">
-          {displayValue(prediction)}
+          {displayRegressionValue(prediction)}
+          {result.target_metadata?.unit
+            ? ` ${result.target_metadata.unit}`
+            : ""}
         </p>
       </div>
     );
   }
 
   if (result.task === "clustering") {
+    const segmentLabel =
+      displaySegmentLabel(
+        result.segment_labels?.[0],
+        prediction
+      );
+    const technicalCluster =
+      result.technical_clusters?.[0] ??
+      `Cluster ${displayValue(prediction)}`;
     return (
       <div className="space-y-3">
         <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
-          <p className="break-words text-lg font-bold text-white">
-            Assigned cluster: {displayValue(
-              prediction
-            )}
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-400">
+            Assigned Segment
           </p>
-          {result.number_of_clusters !==
-            undefined &&
-            result.number_of_clusters !==
-              null && (
-              <p className="mt-2 text-xs text-emerald-200/80">
-                Configured clusters: {result.number_of_clusters}
-              </p>
-            )}
+          <p className="mt-2 break-words text-lg font-bold text-white">
+            {segmentLabel}
+          </p>
+          <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-emerald-400">
+            Technical Cluster
+          </p>
+          <p className="mt-1 text-sm text-emerald-100">
+            {technicalCluster}
+          </p>
         </div>
         <p className="text-xs leading-5 text-slate-500">
           Cluster labels are identifiers and do not represent an order or quality ranking.
@@ -248,15 +415,24 @@ export default function BestModelPrediction({
     trainingResult.dataset_summary;
   const targetColumn =
     summary?.target_column ?? null;
+  const requiredFeatures =
+    artifact?.prediction_schema?.expected_features ??
+    artifact?.required_features;
+  const schemaColumns =
+    artifact?.prediction_schema?.columns;
 
   const fields = useMemo(
     () =>
       Object.entries(
-        summary?.columns_info ?? {}
+        schemaColumns ??
+          summary?.columns_info ??
+          {}
       )
         .filter(
           ([name]) =>
-            name !== targetColumn
+            name !== targetColumn &&
+            (!requiredFeatures?.length ||
+              requiredFeatures.includes(name))
         )
         .map(
           ([name, metadata]) => ({
@@ -278,7 +454,7 @@ export default function BestModelPrediction({
                 0,
           })
         ),
-    [summary?.columns_info, targetColumn]
+    [summary?.columns_info, schemaColumns, targetColumn, requiredFeatures]
   );
 
   const [expanded, setExpanded] =
@@ -299,6 +475,10 @@ export default function BestModelPrediction({
     useState<AutoMLPredictionResponse | null>(
       null
     );
+  const [inputMode, setInputMode] =
+    useState<"manual" | "csv">("manual");
+  const [csvFile, setCsvFile] =
+    useState<File | null>(null);
   const requestVersion = useRef(0);
 
   useEffect(
@@ -432,8 +612,14 @@ export default function BestModelPrediction({
       return;
     }
 
-    const { row, errors } =
-      buildPredictionRow();
+    if (inputMode === "csv" && !csvFile) {
+      setPredictionError("Select a CSV file to predict.");
+      return;
+    }
+
+    const { row, errors } = inputMode === "manual"
+      ? buildPredictionRow()
+      : { row: {}, errors: {} };
 
     setValidationErrors(errors);
 
@@ -452,11 +638,12 @@ export default function BestModelPrediction({
     setPredictionResult(null);
 
     try {
-      const result = await predictValues({
-        model_filename:
-          modelFilename,
-        rows: [row],
-      });
+      const result = inputMode === "csv" && csvFile
+        ? await predictCsv(modelFilename, csvFile)
+        : await predictValues({
+            model_filename: modelFilename,
+            rows: [row],
+          });
 
       if (
         requestVersion.current ===
@@ -494,6 +681,7 @@ export default function BestModelPrediction({
     setPredictionError(null);
     setPredictionResult(null);
     setPredicting(false);
+    setCsvFile(null);
   }
 
   let unavailableMessage =
@@ -534,7 +722,7 @@ export default function BestModelPrediction({
           Test Best Model
         </h2>
         <p className="mt-2 text-sm leading-6 text-slate-400">
-          Enter one row of feature values to test the saved model without retraining.
+          Enter one row manually or upload a CSV to predict every valid row without retraining.
         </p>
       </div>
 
@@ -568,7 +756,50 @@ export default function BestModelPrediction({
             noValidate
             aria-busy={predicting}
           >
-            {fields.map(
+            <div className="grid grid-cols-2 rounded-xl bg-slate-950 p-1">
+              {(["manual", "csv"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => {
+                    setInputMode(mode);
+                    setPredictionError(null);
+                    setPredictionResult(null);
+                  }}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium capitalize ${
+                    inputMode === mode
+                      ? "bg-blue-600 text-white"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  {mode === "csv" ? "CSV upload" : mode}
+                </button>
+              ))}
+            </div>
+
+            {inputMode === "csv" ? (
+              <div>
+                <label htmlFor="automl-prediction-csv" className="block text-sm font-medium text-slate-300">
+                  Prediction CSV
+                </label>
+                <input
+                  id="automl-prediction-csv"
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] ?? null;
+                    const valid = !file || file.name.toLowerCase().endsWith(".csv");
+                    setCsvFile(valid ? file : null);
+                    setPredictionError(valid ? null : "Prediction upload must be a CSV file.");
+                  }}
+                  disabled={predicting}
+                  className="mt-2 block w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+                />
+                <p className="mt-2 text-xs text-slate-500">
+                  Required columns: {fields.map((field) => field.name).join(", ")}
+                </p>
+              </div>
+            ) : fields.map(
               (field, index) => {
                 const inputId =
                   `automl-prediction-${index}`;
@@ -744,7 +975,9 @@ export default function BestModelPrediction({
               >
                 {predicting
                   ? "Predicting..."
-                  : "Predict"}
+                  : inputMode === "csv"
+                    ? "Predict CSV"
+                    : "Predict"}
               </button>
               <button
                 type="button"
@@ -794,6 +1027,34 @@ export default function BestModelPrediction({
               )}
             </div>
           </form>
+        )}
+
+      {(trainingResult.task === "classification" ||
+        trainingResult.task === "regression") && (
+          <div className="mt-5 border-t border-slate-800 pt-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Influential model features
+            </p>
+            {artifact?.feature_importance?.length ? (
+              <>
+                <div className="mt-3 space-y-2">
+                  {artifact.feature_importance.slice(0, 8).map((item) => (
+                    <div key={item.feature} className="flex items-center justify-between gap-4 text-xs">
+                      <span className="break-all text-slate-300">{item.feature.replace("__", ": ")}</span>
+                      <span className="font-mono text-blue-300">{item.importance.toPrecision(3)}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-slate-500">
+                  Derived from the trained estimator&apos;s {artifact.feature_importance[0].source}; not causal effects or required-input ranking.
+                </p>
+              </>
+            ) : (
+              <p className="mt-3 text-sm text-slate-500">
+                Feature importance unavailable for this model
+              </p>
+            )}
+          </div>
         )}
     </section>
   );

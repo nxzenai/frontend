@@ -461,6 +461,28 @@ export async function predictValues(
   return response.data;
 }
 
+export async function predictCsv(
+  modelFilename: string,
+  file: File
+): Promise<AutoMLPredictionResponse> {
+  const formData = new FormData();
+  formData.append("model_filename", modelFilename);
+  formData.append("file", file, file.name);
+
+  const response = await api.post<unknown>(
+    "/api/v1/automl/predict",
+    formData
+  );
+
+  if (!isPredictionResponse(response.data)) {
+    throw new Error(
+      "The prediction service returned an invalid response."
+    );
+  }
+
+  return response.data;
+}
+
 export function getPredictionErrorMessage(
   error: unknown
 ): string {
