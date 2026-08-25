@@ -9,6 +9,7 @@ import {
 
 import useAutoML from "@/hooks/useAutoML";
 import BestModelPrediction from "@/components/automl/BestModelPrediction";
+import ResultsVisualizations from "@/components/automl/ResultsVisualizations";
 import { getAutoMLInfo } from "@/services/automl.service";
 
 import type {
@@ -642,6 +643,13 @@ export default function AutoMLWorkspace() {
       datasetInfo,
       datasetColumns,
     ]);
+
+  const activeDatasetSummary =
+    datasetInfo?.dataset_summary ??
+    datasetInfo;
+  const describedColumns =
+    activeDatasetSummary?.columns_info ??
+    {};
 
   const maximumCustomClusters =
     useMemo(() => {
@@ -1609,6 +1617,73 @@ export default function AutoMLWorkspace() {
 
               </div>
 
+              <div className="mt-6 border-t border-slate-800 pt-6">
+                <h3 className="font-semibold text-slate-200">
+                  Dataset Summary
+                </h3>
+                <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-xl bg-slate-950 p-3">
+                    <dt className="text-xs text-slate-500">Rows</dt>
+                    <dd className="mt-1 font-semibold text-slate-200">{activeDatasetSummary?.rows ?? datasetPreview.length}</dd>
+                  </div>
+                  <div className="rounded-xl bg-slate-950 p-3">
+                    <dt className="text-xs text-slate-500">Columns</dt>
+                    <dd className="mt-1 font-semibold text-slate-200">{activeDatasetSummary?.columns ?? datasetColumns.length}</dd>
+                  </div>
+                  <div className="rounded-xl bg-slate-950 p-3">
+                    <dt className="text-xs text-slate-500">Missing values</dt>
+                    <dd className="mt-1 font-semibold text-slate-200">{activeDatasetSummary?.missing_values ?? 0}</dd>
+                  </div>
+                  <div className="rounded-xl bg-slate-950 p-3">
+                    <dt className="text-xs text-slate-500">Target</dt>
+                    <dd className="mt-1 break-words font-semibold text-slate-200">
+                      {task === "clustering" ? "Not applicable" : targetColumn || "Not selected"}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="mt-5 overflow-x-auto rounded-xl border border-slate-800">
+                  <table className="min-w-full text-left text-xs">
+                    <thead className="bg-slate-950 text-slate-400">
+                      <tr>
+                        <th className="px-4 py-3 font-medium">Column</th>
+                        <th className="px-4 py-3 font-medium">Description</th>
+                        <th className="px-4 py-3 font-medium">Datatype</th>
+                        <th className="px-4 py-3 font-medium">Role</th>
+                        <th className="px-4 py-3 font-medium">Missing</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {datasetColumns.map((column) => {
+                        const metadata = describedColumns[column] ?? {};
+                        const role =
+                          task !== "clustering" && column === targetColumn
+                            ? "target"
+                            : metadata.role ?? "feature";
+                        const description =
+                          role === "target"
+                            ? "Selected prediction target."
+                            : metadata.description ?? "Description unavailable";
+                        return (
+                          <tr key={column} className="border-t border-slate-800">
+                            <td className="px-4 py-3 font-medium text-slate-200">{column}</td>
+                            <td className="max-w-72 px-4 py-3 text-slate-400">{description}</td>
+                            <td className="whitespace-nowrap px-4 py-3 text-slate-300">{metadata.dtype ?? "Unknown"}</td>
+                            <td className="px-4 py-3 capitalize text-slate-300">{role}</td>
+                            <td className="whitespace-nowrap px-4 py-3 text-slate-300">
+                              {metadata.missing ?? 0}
+                              {typeof metadata.missing_percentage === "number"
+                                ? ` (${metadata.missing_percentage.toFixed(1)}%)`
+                                : ""}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
             </div>
 
           )}
@@ -1812,6 +1887,10 @@ export default function AutoMLWorkspace() {
                 </dl>
               </section>
             )}
+
+          {predictionTrainingResult && (
+            <ResultsVisualizations result={predictionTrainingResult} />
+          )}
 
           {predictionTrainingResult && (
             <BestModelPrediction

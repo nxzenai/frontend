@@ -81,6 +81,9 @@ export interface DatasetColumnInfo {
   categories?: PredictionValue[];
   allowed_values?: PredictionValue[];
   values?: PredictionValue[];
+  description?: string;
+  role?: "feature" | "target" | "identifier" | "ignored";
+  missing_percentage?: number;
 
   [key: string]: any;
 }
@@ -312,6 +315,8 @@ export interface AutoMLResult {
 
   clustering?: ClusteringTrainingResult;
 
+  visual_results?: AutoMLVisualResults;
+
   skipped_algorithms?: string[];
 
   excluded_algorithms?: string[];
@@ -365,6 +370,10 @@ export interface AutoMLArtifact {
   model_filename?: string;
   prediction_supported?: boolean;
   prediction_unavailable_reason?: string | null;
+  required_features?: string[];
+  feature_importance?: FeatureImportance[];
+  prediction_schema?: AutoMLPredictionSchema;
+  ignored_identifiers?: string[];
 
   [key: string]: unknown;
 }
@@ -383,8 +392,61 @@ export interface AutoMLPredictionResponse {
   classes?: PredictionValue[];
   probabilities?: number[][];
   number_of_clusters?: number | null;
+  prediction_meanings?: string[];
+  prediction_labels?: string[];
+  segment_labels?: string[];
+  technical_clusters?: string[];
+  prediction_profiles?: string[];
+  cluster_profiles?: Record<string, {
+    segment_label: string;
+    profile: string;
+    characteristics?: string[];
+  }>;
+  encoded_predictions?: Array<number | null>;
+  prediction_confidences?: Array<number | null>;
+  target_metadata?: DatasetColumnInfo & {
+    name?: string;
+    unit?: string | null;
+  };
 
   [key: string]: unknown;
+}
+
+export interface AutoMLPredictionSchema {
+  expected_features?: string[];
+  required_fields?: string[];
+  datatypes?: Record<string, string | null>;
+  columns?: Record<string, DatasetColumnInfo>;
+  ignored_identifiers?: string[];
+  target?: DatasetColumnInfo & {
+    name?: string;
+    unit?: string | null;
+  };
+}
+
+export interface FeatureImportance {
+  feature: string;
+  importance: number;
+  source: "feature_importances_" | "coef_" | string;
+}
+
+export interface AutoMLVisualResults {
+  roc_curves?: Array<{
+    class_name: PredictionValue;
+    auc: number;
+    points: Array<{ fpr: number; tpr: number }>;
+  }>;
+  regression_points?: Array<{
+    actual: number;
+    predicted: number;
+    residual: number;
+  }>;
+  cluster_points?: Array<{
+    x: number;
+    y: number;
+    cluster: PredictionValue;
+  }>;
+  reduced_with_pca?: boolean;
 }
 
 export interface AutoMLPredictionUnsupportedDetail {
