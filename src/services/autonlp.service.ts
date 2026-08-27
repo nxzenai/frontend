@@ -3,12 +3,51 @@ import api from "@/lib/studioApi";
 import {
     AutoNLPJobCreateRequest,
     AutoNLPJobResponse,
+    AutoNLPDatasetInspection,
+    AutoNLPBatchPredictionResponse,
     AutoNLPPredictRequest,
     AutoNLPPredictResponse,
 } from "@/types/autonlp";
 
 
 class AutoNLPService {
+
+    async inspect(
+        file: File,
+        textColumn?: string,
+        targetColumn?: string,
+    ): Promise<AutoNLPDatasetInspection> {
+        const formData = new FormData();
+        formData.append("file", file);
+        if (textColumn) formData.append("text_column", textColumn);
+        if (targetColumn) formData.append("target_column", targetColumn);
+        return (await api.post<AutoNLPDatasetInspection>(
+            "/autonlp/inspect",
+            formData,
+        )).data;
+    }
+
+    async listJobs(): Promise<AutoNLPJobResponse[]> {
+        return (await api.get<AutoNLPJobResponse[]>("/autonlp/jobs")).data;
+    }
+
+    async archiveJob(jobId: string): Promise<void> {
+        await api.delete(`/autonlp/jobs/${jobId}`);
+    }
+
+    async predictBatch(
+        jobId: string,
+        file: File,
+        textColumn: string,
+    ): Promise<AutoNLPBatchPredictionResponse> {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("text_column", textColumn);
+        return (await api.post<AutoNLPBatchPredictionResponse>(
+            `/autonlp/jobs/${jobId}/predict/csv`,
+            formData,
+        )).data;
+    }
 
     ////////////////////////////////////////////////////////////
     // Start AutoNLP Training Job
@@ -51,6 +90,9 @@ class AutoNLPService {
                 request.max_epochs,
             ),
         );
+        if (request.candidate_architectures?.length) {
+            formData.append("candidate_architectures", request.candidate_architectures.join(","));
+        }
 
 
         ////////////////////////////////////////////////////////
