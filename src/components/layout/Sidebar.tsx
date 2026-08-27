@@ -17,6 +17,7 @@ import {
 export default function Sidebar() {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const navigation = NAVIGATION;
 
   function handleLogout() {
     logout();
@@ -27,7 +28,7 @@ export default function Sidebar() {
   // Navigation Groups
   //////////////////////////////////////////////////////
 
-  const labItems = NAVIGATION.filter(
+  const labItems = navigation.filter(
     (item) =>
       item.section === "labs" &&
       canAccess(
@@ -36,7 +37,7 @@ export default function Sidebar() {
       )
   );
 
-  const businessItems = NAVIGATION.filter(
+  const businessItems = navigation.filter(
     (item) =>
       item.section === "business" &&
       canAccess(
@@ -45,7 +46,7 @@ export default function Sidebar() {
       )
   );
 
-  const platformItems = NAVIGATION.filter(
+  const platformItems = navigation.filter(
     (item) =>
       item.section === "platform" &&
       canAccess(
@@ -54,7 +55,7 @@ export default function Sidebar() {
       )
   );
 
-  const dashboardItems = NAVIGATION.filter(
+  const dashboardItems = navigation.filter(
     (item) =>
       item.section === "dashboard" &&
       canAccess(

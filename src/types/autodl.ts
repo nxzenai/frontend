@@ -4,16 +4,13 @@
 
 export enum Modality {
     IMAGE = "image",
-    AUDIO = "audio",
     TIME_SERIES = "time_series",
 }
 
 export enum DLArchitecture {
     CNN = "cnn",
+    RESNET18 = "resnet18",
     RNN = "rnn",
-    LSTM = "lstm",
-    DAE = "dae",
-    DBN = "dbn",
 }
 
 ////////////////////////////////////////////////////////////
@@ -24,6 +21,7 @@ export interface AutoDLJobCreateRequest {
     dataset_id: string;
     modality: Modality;
     architecture: DLArchitecture;
+    target_column?: string;
     max_epochs: number;
 }
 
@@ -88,11 +86,37 @@ export interface AutoDLTrainingHistory {
     validation_accuracy?: number[];
 }
 
+export interface AutoDLTrainingProgress {
+    stage: string;
+    current_epoch: number;
+    total_epochs: number;
+    percentage: number;
+    latest_train_loss?: number | null;
+    latest_validation_loss?: number | null;
+    latest_train_accuracy?: number | null;
+    latest_validation_accuracy?: number | null;
+}
+
+export interface AutoDLDatasetInspection {
+    modality: Modality;
+    filename: string;
+    file_count?: number | null;
+    class_counts: Record<string, number>;
+    dimensions: Array<{ width: number; height: number; count: number }>;
+    columns: string[];
+    row_count?: number | null;
+    missing_values: Record<string, number>;
+    target_column?: string | null;
+    target_valid?: boolean | null;
+    target_error?: string | null;
+}
+
 ////////////////////////////////////////////////////////////
 // Artifact
 ////////////////////////////////////////////////////////////
 
 export interface AutoDLArtifactInfo {
+    // Training progress and inspection types are declared below.
     artifact_id?: string;
 
     model_name?: string;
@@ -100,6 +124,8 @@ export interface AutoDLArtifactInfo {
     status?: string;
 
     artifact_path?: string;
+    model_version_id?: string | null;
+    artifact_integrity_sha256?: string | null;
 }
 
 ////////////////////////////////////////////////////////////
@@ -110,6 +136,7 @@ export interface AutoDLJobResponse {
     job_id: string;
 
     status:
+        | "queued"
         | "pending"
         | "running"
         | "completed"
@@ -129,9 +156,26 @@ export interface AutoDLJobResponse {
 
     training_history?: AutoDLTrainingHistory | null;
 
+    progress?: AutoDLTrainingProgress | null;
+    leaderboard?: Array<{
+        rank?: number | null;
+        model_name: string;
+        score?: number | null;
+        accuracy?: number | null;
+        final_loss?: number | null;
+        training_time?: number | null;
+        success: boolean;
+        error?: string | null;
+    }>;
+    evaluation?: { labels: string[]; confusion_matrix: number[][] } | null;
+
     artifact?: AutoDLArtifactInfo | null;
 
     created_at?: string | null;
+
+    archived_at?: string | null;
+
+    error?: string | null;
 }
 
 ////////////////////////////////////////////////////////////
@@ -153,4 +197,6 @@ export interface AutoDLPredictionResponse {
     confidence: number;
 
     probabilities: AutoDLPredictionProbability[];
+    explanation_status: string;
+    gradcam_image?: string | null;
 }

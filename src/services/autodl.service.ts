@@ -2,6 +2,7 @@ import api from "@/lib/studioApi";
 
 import {
     AutoDLJobResponse,
+    AutoDLDatasetInspection,
     AutoDLPredictionResponse,
     Modality,
     DLArchitecture,
@@ -9,6 +10,29 @@ import {
 
 
 class AutoDLService {
+
+    async inspect(
+        file: File,
+        modality: Modality,
+        targetColumn?: string,
+    ): Promise<AutoDLDatasetInspection> {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("modality", modality);
+        if (targetColumn) formData.append("target_column", targetColumn);
+        return (await api.post<AutoDLDatasetInspection>(
+            "/autodl/inspect",
+            formData,
+        )).data;
+    }
+
+    async listJobs(): Promise<AutoDLJobResponse[]> {
+        return (await api.get<AutoDLJobResponse[]>("/autodl/jobs")).data;
+    }
+
+    async archiveJob(jobId: string): Promise<void> {
+        await api.delete(`/autodl/jobs/${jobId}`);
+    }
 
     ////////////////////////////////////////////////////////////
     // Start Training Job
@@ -19,6 +43,8 @@ class AutoDLService {
         modality: Modality,
         architecture: DLArchitecture,
         max_epochs: number,
+        target_column?: string,
+        candidate_architectures?: DLArchitecture[],
     ): Promise<AutoDLJobResponse> {
 
         const formData = new FormData();
@@ -42,6 +68,16 @@ class AutoDLService {
             "max_epochs",
             max_epochs.toString(),
         );
+
+        if (target_column) {
+            formData.append(
+                "target_column",
+                target_column,
+            );
+        }
+        if (candidate_architectures?.length) {
+            formData.append("candidate_architectures", candidate_architectures.join(","));
+        }
 
 
         const response =

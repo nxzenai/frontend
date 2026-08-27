@@ -59,9 +59,30 @@ export default function useAutoNLPJob() {
                     // Store Result
                     ////////////////////////////////////////////////////
 
-                    setJob(newJob);
+                    let currentJob = newJob;
+                    setJob(currentJob);
 
-                    return newJob;
+                    while (
+                        currentJob.status === "queued"
+                        || currentJob.status === "pending"
+                        || currentJob.status === "running"
+                    ) {
+                        await new Promise((resolve) =>
+                            setTimeout(resolve, 2000)
+                        );
+                        currentJob = await AutoNLPService.getJob(
+                            currentJob.job_id
+                        );
+                        setJob(currentJob);
+                    }
+
+                    if (currentJob.status === "failed") {
+                        throw new Error(
+                            currentJob.error ?? "AutoNLP training failed."
+                        );
+                    }
+
+                    return currentJob;
 
                 } catch (err: any) {
 
@@ -85,6 +106,14 @@ export default function useAutoNLPJob() {
                     if (typeof detail === "string") {
 
                         errorMessage = detail;
+
+                    } else if (
+                        detail
+                        && typeof detail === "object"
+                        && typeof detail.message === "string"
+                    ) {
+
+                        errorMessage = detail.message;
 
                     } else if (Array.isArray(detail)) {
 

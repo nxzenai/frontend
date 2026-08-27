@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
     AlertTriangle,
@@ -14,10 +14,21 @@ import {
 
 import useAutoNLPJob from "@/hooks/useAutoNLPJob";
 import AutoNLPService from "@/services/autonlp.service";
+import AIModelRegistryPanel from "@/components/ai-registry/AIModelRegistryPanel";
+import {
+    ClassMetricsChart,
+    ConfusionMatrixView,
+    TrainingCurves,
+    RocCurveView,
+} from "@/components/ai/TrainingVisuals";
 
 import {
     AutoNLPPredictResponse,
+    AutoNLPBatchPredictionResponse,
+    AutoNLPDatasetInspection,
+    AutoNLPJobResponse,
     NLPTask,
+    NLPArchitecture,
 } from "@/types/autonlp";
 
 
@@ -56,6 +67,17 @@ export default function AutoNLPWorkspace() {
 
     const [maxEpochs, setMaxEpochs] =
         useState(10);
+    const [compareTransformer, setCompareTransformer] = useState(false);
+
+    const [inspection, setInspection] =
+        useState<AutoNLPDatasetInspection | null>(null);
+    const [inspectionError, setInspectionError] = useState<string | null>(null);
+    const [managedJobs, setManagedJobs] =
+        useState<AutoNLPJobResponse[]>([]);
+    const [batchFile, setBatchFile] = useState<File | null>(null);
+    const [batchResult, setBatchResult] =
+        useState<AutoNLPBatchPredictionResponse | null>(null);
+    const [batching, setBatching] = useState(false);
 
 
     ////////////////////////////////////////////////////////////
@@ -82,6 +104,38 @@ export default function AutoNLPWorkspace() {
     ////////////////////////////////////////////////////////////
     // Helpers
     ////////////////////////////////////////////////////////////
+
+    async function refreshJobs() {
+        try {
+            setManagedJobs(await AutoNLPService.listJobs());
+        } catch {
+            setManagedJobs([]);
+        }
+    }
+
+    useEffect(() => {
+        void refreshJobs();
+    }, []);
+
+    async function inspectFile(selected: File | null) {
+        setInspection(null);
+        setInspectionError(null);
+        if (!selected) return;
+        try {
+            setInspection(await AutoNLPService.inspect(
+                selected,
+                textColumn.trim(),
+                targetColumn.trim(),
+            ));
+        } catch (err: any) {
+            setInspection(null);
+            const detail = err?.response?.data?.detail;
+            setInspectionError(
+                (typeof detail === "object" ? detail?.message : detail)
+                ?? "Unable to inspect this dataset."
+            );
+        }
+    }
 
     function toPercent(
         value?: number | null,
@@ -420,9 +474,14 @@ export default function AutoNLPWorkspace() {
                 task,
                 max_epochs:
                     maxEpochs,
+                candidate_architectures: compareTransformer
+                    ? [NLPArchitecture.LSTM, NLPArchitecture.DISTILBERT]
+                    : [NLPArchitecture.LSTM],
             });
 
-        } catch (err) {
+            await refreshJobs();
+
+        } catch (err: any) {
 
             console.error(err);
         }
@@ -468,21 +527,62 @@ export default function AutoNLPWorkspace() {
                 result
             );
 
-        } catch (err) {
+        } catch (err: any) {
 
             console.error(
                 "AutoNLP prediction failed:",
                 err
             );
 
+            const detail = err?.response?.data?.detail;
             setPredictionError(
-                "Prediction failed. Please confirm the trained model artifact is available and try again."
+                (typeof detail === "object" ? detail?.message : detail)
+                ?? "Prediction failed. Please confirm the prediction input and try again."
             );
 
         } finally {
 
             setPredicting(false);
         }
+    }
+
+    async function handleBatchPredict() {
+        if (!job?.job_id || !batchFile || !textColumn.trim()) return;
+        setBatching(true);
+        setBatchResult(null);
+        try {
+            setBatchResult(await AutoNLPService.predictBatch(
+                job.job_id,
+                batchFile,
+                textColumn.trim(),
+            ));
+        } catch (err: any) {
+            const detail = err?.response?.data?.detail;
+            setPredictionError(
+                (typeof detail === "object" ? detail?.message : detail)
+                ?? "CSV prediction failed."
+            );
+        } finally {
+            setBatching(false);
+        }
+    }
+
+    function downloadBatchResults() {
+        if (!batchResult) return;
+        const escape = (value: unknown) => {
+            const raw = String(value ?? "");
+            const safe = /^[=+\-@]/.test(raw) ? `'${raw}` : raw;
+            return `"${safe.replaceAll('"', '""')}"`;
+        };
+        const lines = ["row_index,predicted_label,confidence,error", ...batchResult.rows.map(row =>
+            [row.row_index, row.predicted_label, row.confidence, row.error].map(escape).join(",")
+        )];
+        const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" }));
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `autonlp-${batchResult.job_id}-predictions.csv`;
+        anchor.click();
+        URL.revokeObjectURL(url);
     }
 
 
@@ -519,7 +619,7 @@ export default function AutoNLPWorkspace() {
 
                 <p className="mt-2 max-w-3xl text-slate-400">
                     Upload labelled text data, run AutoNLP,
-                    review the trained LSTM model, and test
+                    compare supported text models, and test
                     the saved model on new text.
                 </p>
 
@@ -539,7 +639,7 @@ export default function AutoNLPWorkspace() {
                 <StepCard
                     number="2"
                     title="Run AutoNLP"
-                    text="NxZen trains the LSTM model."
+                    text="Train one model or compare valid candidates."
                 />
 
                 <StepCard
@@ -556,6 +656,29 @@ export default function AutoNLPWorkspace() {
 
             </div>
 
+
+            {managedJobs.length > 0 && (
+                <div className="rounded-2xl border border-slate-700 bg-slate-900 p-6">
+                    <h2 className="text-lg font-bold text-white">My AutoNLP Models</h2>
+                    <div className="mt-4 space-y-2">
+                        {managedJobs.map(item => (
+                            <div key={item.job_id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-950 p-3 text-sm">
+                                <span className="text-slate-300">{item.task.replaceAll("_", " ")} · {item.status}{item.metrics?.accuracy == null ? "" : ` · ${(item.metrics.accuracy * 100).toFixed(1)}% accuracy`} · {item.job_id}</span>
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        await AutoNLPService.archiveJob(item.job_id);
+                                        await refreshJobs();
+                                    }}
+                                    className="text-amber-300"
+                                >Archive</button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <AIModelRegistryPanel module="autonlp" />
 
             {/* Configuration */}
 
@@ -636,6 +759,8 @@ export default function AutoNLPWorkspace() {
                                     selected
                                 );
 
+                                void inspectFile(selected);
+
                                 setPrediction(
                                     null
                                 );
@@ -649,6 +774,32 @@ export default function AutoNLPWorkspace() {
                         />
 
                     </label>
+
+                    {file && (
+                        <button
+                            type="button"
+                            onClick={() => void inspectFile(file)}
+                            className="mt-3 rounded-lg border border-purple-500/30 px-4 py-2 text-sm text-purple-300"
+                        >
+                            Refresh Dataset Inspection
+                        </button>
+                    )}
+
+                    {inspection && (
+                        <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950 p-4 text-sm text-slate-300">
+                            <p><strong>Rows:</strong> {inspection.row_count}</p>
+                            <p className="mt-1"><strong>Columns:</strong> {inspection.columns.join(", ")}</p>
+                            <p className="mt-1"><strong>Detected text candidates:</strong> {inspection.text_candidates.join(", ") || "None"}</p>
+                            <p className="mt-1"><strong>Detected target candidates:</strong> {inspection.target_candidates.join(", ") || "None"}</p>
+                            <p className="mt-1"><strong>Missing values:</strong> {Object.entries(inspection.missing_values).map(([name, count]) => `${name}: ${count}`).join(", ")}</p>
+                            {Object.keys(inspection.class_balance).length > 0 && <p className="mt-1"><strong>Class balance:</strong> {Object.entries(inspection.class_balance).map(([name, count]) => `${name}: ${count}`).join(", ")}</p>}
+                            {Object.keys(inspection.text_length_summary).length > 0 && <p className="mt-1"><strong>Text lengths:</strong> min {inspection.text_length_summary.min}, mean {inspection.text_length_summary.mean}, median {inspection.text_length_summary.median}, max {inspection.text_length_summary.max}</p>}
+                        </div>
+                    )}
+
+                    {inspectionError && (
+                        <p className="mt-3 text-sm text-red-300">{inspectionError}</p>
+                    )}
 
                 </div>
 
@@ -749,7 +900,7 @@ export default function AutoNLPWorkspace() {
                         <input
                             type="number"
                             min={1}
-                            max={500}
+                            max={100}
                             value={maxEpochs}
                             onChange={(e) => {
 
@@ -785,9 +936,12 @@ export default function AutoNLPWorkspace() {
                     </p>
 
                     <p className="mt-1 text-sm leading-6 text-slate-300">
-                        AutoNLP currently uses the NxZen
-                        LSTM text model automatically.
+                        LSTM remains the default. Optionally compare it with a pretrained DistilBERT classifier.
                     </p>
+                    <label className="mt-3 flex items-center gap-2 text-sm text-slate-300">
+                        <input type="checkbox" checked={compareTransformer} onChange={(event) => setCompareTransformer(event.target.checked)} />
+                        Compare LSTM with pretrained DistilBERT
+                    </label>
 
                 </div>
 
@@ -902,9 +1056,21 @@ export default function AutoNLPWorkspace() {
                             AutoNLP is training your model
                         </p>
 
+                        {job?.progress && (
+                            <div className="mt-4 w-full max-w-xl">
+                                <div className="flex justify-between text-xs text-slate-400">
+                                    <span>{job.progress.stage.replaceAll("_", " ")}</span>
+                                    <span>{job.progress.current_epoch}/{job.progress.total_epochs} epochs · {job.progress.percentage.toFixed(0)}%</span>
+                                </div>
+                                <div className="mt-2 h-2 overflow-hidden rounded bg-slate-800">
+                                    <div className="h-full bg-purple-500" style={{ width: `${Math.min(job.progress.percentage, 100)}%` }} />
+                                </div>
+                            </div>
+                        )}
+
                         <p className="mt-1 text-slate-400">
                             The text is being prepared and
-                            the LSTM model is learning from
+                            the selected model candidates are learning from
                             your dataset.
                         </p>
 
@@ -1013,7 +1179,7 @@ export default function AutoNLPWorkspace() {
                                     </p>
 
                                     <h3 className="mt-2 text-xl font-bold text-white">
-                                        LSTM model saved successfully
+                                        {job.artifact?.model_name ?? "Model"} saved successfully
                                     </h3>
 
                                     <p className="mt-2 max-w-3xl leading-7 text-slate-300">
@@ -1399,6 +1565,28 @@ export default function AutoNLPWorkspace() {
 
                     </div>
 
+
+                    <TrainingCurves history={job.training_history} />
+
+                    <ConfusionMatrixView
+                        labels={job.evaluation?.labels}
+                        matrix={job.evaluation?.confusion_matrix}
+                    />
+                    <RocCurveView curve={job.evaluation?.roc_curve} auc={job.evaluation?.roc_auc} />
+
+                    {!!job.leaderboard?.length && (
+                        <div className="rounded-xl border border-slate-700 bg-slate-950 p-4">
+                            <h3 className="mb-3 font-semibold text-white">Model Comparison</h3>
+                            {job.leaderboard.map((item, index) => (
+                                <div key={`${item.model_name}-${index}`} className="flex justify-between py-1 text-sm text-slate-300">
+                                    <span>{item.rank ? `#${item.rank} ` : ""}{item.model_name}</span>
+                                    <span>{item.success ? `${toPercent(item.f1_score)} F1` : item.error ?? "Failed"}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    <ClassMetricsChart metrics={job.evaluation?.class_metrics} />
 
                     {/* Performance by Class */}
 
@@ -1792,6 +1980,54 @@ export default function AutoNLPWorkspace() {
 
                             )}
 
+                            {!!prediction?.token_attributions?.length && (
+                                <div className="mt-6 rounded-xl border border-slate-700 bg-slate-950 p-4">
+                                    <h4 className="font-semibold text-white">Token Attribution</h4>
+                                    <div className="mt-3 flex flex-wrap gap-2">{prediction.token_attributions.map((item, index) => (
+                                        <span key={`${item.token}-${index}`} className={`rounded px-2 py-1 text-sm ${item.attribution >= 0 ? "bg-emerald-500/20 text-emerald-200" : "bg-red-500/20 text-red-200"}`}>
+                                            {item.token} {item.attribution.toFixed(2)}
+                                        </span>
+                                    ))}</div>
+                                </div>
+                            )}
+
+                            <div className="mt-8 border-t border-slate-700 pt-6">
+                                <h4 className="font-semibold text-white">CSV Batch Prediction</h4>
+                                <p className="mt-1 text-sm text-slate-400">Upload a CSV containing the configured text column. Every row returns a label, confidence, or validation error.</p>
+                                <input
+                                    type="file"
+                                    accept=".csv,text/csv"
+                                    onChange={(event) => {
+                                        setBatchFile(event.target.files?.[0] ?? null);
+                                        setBatchResult(null);
+                                    }}
+                                    className="mt-4 block w-full text-sm text-slate-300"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleBatchPredict}
+                                    disabled={!batchFile || batching}
+                                    className="mt-4 rounded-lg bg-purple-600 px-4 py-2 font-semibold text-white disabled:opacity-50"
+                                >{batching ? "Predicting CSV..." : "Predict CSV"}</button>
+                                {batchResult && (
+                                    <div className="mt-4 overflow-x-auto">
+                                        <p className="mb-3 text-sm text-slate-300">{batchResult.valid_rows} valid · {batchResult.failed_rows} failed</p>
+                                        <button type="button" onClick={downloadBatchResults} className="mb-3 rounded-lg border border-purple-500 px-3 py-1.5 text-sm text-purple-200">Download CSV results</button>
+                                        <table className="min-w-full text-left text-sm">
+                                            <thead><tr className="text-slate-500"><th className="p-2">Row</th><th className="p-2">Label</th><th className="p-2">Confidence</th><th className="p-2">Error</th></tr></thead>
+                                            <tbody>{batchResult.rows.map(row => (
+                                                <tr key={row.row_index} className="border-t border-slate-800 text-slate-300">
+                                                    <td className="p-2">{row.row_index}</td>
+                                                    <td className="p-2">{row.predicted_label ?? "—"}</td>
+                                                    <td className="p-2">{row.confidence == null ? "—" : toPercent(row.confidence)}</td>
+                                                    <td className="p-2 text-red-300">{row.error ?? "—"}</td>
+                                                </tr>
+                                            ))}</tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+
                         </div>
 
                     )}
@@ -1807,7 +2043,7 @@ export default function AutoNLPWorkspace() {
 
                         <p className="mt-3 max-w-4xl leading-7 text-slate-300">
 
-                            AutoNLP trained an LSTM model
+                            AutoNLP trained {job.metrics?.architecture ?? "a text model"}
                             using your uploaded data. It was
                             evaluated on{" "}
 

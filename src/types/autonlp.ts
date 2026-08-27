@@ -5,14 +5,15 @@
 export enum NLPTask {
     TEXT_CLASSIFICATION = "text_classification",
     SENTIMENT_ANALYSIS = "sentiment_analysis",
-    NAMED_ENTITY_RECOGNITION = "ner",
 }
 
 export enum NLPArchitecture {
     LSTM = "lstm",
+    DISTILBERT = "distilbert",
 }
 
 export type AutoNLPJobStatus =
+    | "queued"
     | "pending"
     | "running"
     | "completed"
@@ -33,6 +34,7 @@ export interface AutoNLPJobCreateRequest {
     task: NLPTask;
 
     max_epochs: number;
+    candidate_architectures?: NLPArchitecture[];
 }
 
 
@@ -114,6 +116,32 @@ export interface AutoNLPTrainingHistory {
 }
 
 
+export interface AutoNLPTrainingProgress {
+    stage: string;
+    current_epoch: number;
+    total_epochs: number;
+    percentage: number;
+    latest_train_loss?: number | null;
+    latest_validation_loss?: number | null;
+    latest_train_accuracy?: number | null;
+    latest_validation_accuracy?: number | null;
+}
+
+export interface AutoNLPDatasetInspection {
+    filename: string;
+    columns: string[];
+    row_count: number;
+    missing_values: Record<string, number>;
+    text_candidates: string[];
+    target_candidates: string[];
+    text_column?: string | null;
+    text_column_valid: boolean;
+    target_column?: string | null;
+    target_column_valid: boolean;
+    class_balance: Record<string, number>;
+    text_length_summary: Record<string, number>;
+}
+
 ////////////////////////////////////////////////////////////
 // Per-Class Evaluation
 ////////////////////////////////////////////////////////////
@@ -143,6 +171,12 @@ export interface AutoNLPEvaluation {
     confusion_matrix: number[][];
 
     class_metrics: AutoNLPClassMetric[];
+    roc_auc?: number | null;
+    roc_curve?: {
+        false_positive_rate: number[];
+        true_positive_rate: number[];
+        thresholds: number[];
+    } | null;
 }
 
 
@@ -158,6 +192,8 @@ export interface AutoNLPArtifactInfo {
     status: string;
 
     artifact_path?: string | null;
+    model_version_id?: string | null;
+    artifact_integrity_sha256?: string | null;
 }
 
 
@@ -195,8 +231,24 @@ export interface AutoNLPPredictResponse {
     confidence: number;
 
     probabilities: AutoNLPClassProbability[];
+    explanation_status: string;
+    token_attributions: Array<{ token: string; attribution: number }>;
 }
 
+
+export interface AutoNLPBatchPredictionResponse {
+    job_id: string;
+    text_column: string;
+    total_rows: number;
+    valid_rows: number;
+    failed_rows: number;
+    rows: Array<{
+        row_index: number;
+        predicted_label?: string | null;
+        confidence?: number | null;
+        error?: string | null;
+    }>;
+}
 
 ////////////////////////////////////////////////////////////
 // Job Response
@@ -221,9 +273,24 @@ export interface AutoNLPJobResponse {
 
     training_history?: AutoNLPTrainingHistory | null;
 
+    progress?: AutoNLPTrainingProgress | null;
+    leaderboard?: Array<{
+        rank?: number | null;
+        model_name: string;
+        score?: number | null;
+        accuracy?: number | null;
+        f1_score?: number | null;
+        success: boolean;
+        error?: string | null;
+    }>;
+
     evaluation?: AutoNLPEvaluation | null;
 
     artifact?: AutoNLPArtifactInfo | null;
 
     created_at?: string | null;
+
+    archived_at?: string | null;
+
+    error?: string | null;
 }

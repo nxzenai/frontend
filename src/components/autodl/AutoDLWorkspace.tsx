@@ -2,6 +2,7 @@
 
 import {
     ChangeEvent,
+    useEffect,
     useMemo,
     useState,
 } from "react";
@@ -15,10 +16,15 @@ import {
 } from "lucide-react";
 
 import useAutoDLJob from "@/hooks/useAutoDLJob";
+import AutoDLService from "@/services/autodl.service";
+import AIModelRegistryPanel from "@/components/ai-registry/AIModelRegistryPanel";
+import { ConfusionMatrixView, TrainingCurves } from "@/components/ai/TrainingVisuals";
 
 import {
     DLArchitecture,
     Modality,
+    AutoDLDatasetInspection,
+    AutoDLJobResponse,
 } from "@/types/autodl";
 
 
@@ -78,6 +84,18 @@ export default function AutoDLWorkspace() {
         useState<number>(
             3
         );
+    const [compareTransferModel, setCompareTransferModel] = useState(false);
+
+    const [
+        targetColumn,
+        setTargetColumn,
+    ] = useState("");
+
+    const [inspection, setInspection] =
+        useState<AutoDLDatasetInspection | null>(null);
+    const [inspectionError, setInspectionError] = useState<string | null>(null);
+    const [managedJobs, setManagedJobs] =
+        useState<AutoDLJobResponse[]>([]);
 
 
     ////////////////////////////////////////////////////////////
@@ -96,6 +114,38 @@ export default function AutoDLWorkspace() {
     ////////////////////////////////////////////////////////////
     // Helpers
     ////////////////////////////////////////////////////////////
+
+    async function refreshJobs() {
+        try {
+            setManagedJobs(await AutoDLService.listJobs());
+        } catch {
+            setManagedJobs([]);
+        }
+    }
+
+    useEffect(() => {
+        void refreshJobs();
+    }, []);
+
+    async function inspectFile(file: File | null) {
+        setInspection(null);
+        setInspectionError(null);
+        if (!file) return;
+        try {
+            setInspection(await AutoDLService.inspect(
+                file,
+                modality,
+                targetColumn.trim() || undefined,
+            ));
+        } catch (err: any) {
+            setInspection(null);
+            const detail = err?.response?.data?.detail;
+            setInspectionError(
+                (typeof detail === "object" ? detail?.message : detail)
+                ?? "Unable to inspect this dataset."
+            );
+        }
+    }
 
     const toPercent = (
         value?: number | null,
@@ -179,7 +229,7 @@ export default function AutoDLWorkspace() {
 
                 if (
                     job?.architecture
-                    === DLArchitecture.CNN
+                    !== DLArchitecture.RNN
                 ) {
                     return (
                         "image/png,"
@@ -212,7 +262,7 @@ export default function AutoDLWorkspace() {
 
                 if (
                     job?.architecture
-                    === DLArchitecture.CNN
+                    !== DLArchitecture.RNN
                 ) {
                     return (
                         "Upload one PNG, JPG, WEBP or BMP "
@@ -307,6 +357,8 @@ export default function AutoDLWorkspace() {
         setSelectedFile(
             file
         );
+
+        void inspectFile(file);
     }
 
 
@@ -357,13 +409,21 @@ export default function AutoDLWorkspace() {
                 epochs
             )
             || epochs < 1
-            || epochs > 1000
+            || epochs > 100
         ) {
 
             alert(
-                "Max epochs must be between 1 and 1000."
+                "Max epochs must be between 1 and 100."
             );
 
+            return;
+        }
+
+        if (
+            modality === Modality.TIME_SERIES
+            && !targetColumn.trim()
+        ) {
+            alert("Enter the time-series target column.");
             return;
         }
 
@@ -382,7 +442,15 @@ export default function AutoDLWorkspace() {
                 modality,
                 architecture,
                 epochs,
+                modality === Modality.TIME_SERIES
+                    ? targetColumn.trim()
+                    : undefined,
+                modality === Modality.IMAGE && compareTransferModel
+                    ? [DLArchitecture.CNN, DLArchitecture.RESNET18]
+                    : [architecture],
             );
+
+            await refreshJobs();
 
         } catch (err) {
 
@@ -480,6 +548,29 @@ export default function AutoDLWorkspace() {
 
             </div>
 
+
+            {managedJobs.length > 0 && (
+                <div className="rounded-2xl border border-slate-700 bg-slate-900 p-6">
+                    <h2 className="text-lg font-bold text-white">My AutoDL Models</h2>
+                    <div className="mt-4 space-y-2">
+                        {managedJobs.map(item => (
+                            <div key={item.job_id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-950 p-3 text-sm">
+                                <span className="text-slate-300">{item.modality.replaceAll("_", " ")} · {item.architecture.toUpperCase()} · {item.status}{item.metrics?.accuracy == null ? "" : ` · ${(item.metrics.accuracy * 100).toFixed(1)}% accuracy`}</span>
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        await AutoDLService.archiveJob(item.job_id);
+                                        await refreshJobs();
+                                    }}
+                                    className="text-amber-300"
+                                >Archive</button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <AIModelRegistryPanel module="autodl" />
 
             {/* ==================================================
                 Configuration
@@ -610,6 +701,17 @@ export default function AutoDLWorkspace() {
 
                         </select>
 
+                        {modality === Modality.IMAGE && (
+                            <label className="mt-3 flex items-center gap-2 text-sm text-slate-300">
+                                <input
+                                    type="checkbox"
+                                    checked={compareTransferModel}
+                                    onChange={(event) => setCompareTransferModel(event.target.checked)}
+                                />
+                                Compare CNN with pretrained ResNet18 transfer learning
+                            </label>
+                        )}
+
                     </div>
 
 
@@ -714,7 +816,7 @@ export default function AutoDLWorkspace() {
                                 )
                         }
                         min={1}
-                        max={1000}
+                        max={100}
                         className="
                             mt-2
                             w-full
@@ -731,6 +833,25 @@ export default function AutoDLWorkspace() {
                     />
 
                 </div>
+
+                {
+                    modality === Modality.TIME_SERIES
+                    && (
+                        <div className="mt-6">
+                            <label className="block text-sm font-medium text-slate-300">
+                                Target Column
+                            </label>
+                            <input
+                                value={targetColumn}
+                                onChange={(event) =>
+                                    setTargetColumn(event.target.value)
+                                }
+                                placeholder="Enter the exact CSV target column"
+                                className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white focus:border-indigo-500 focus:outline-none"
+                            />
+                        </div>
+                    )
+                }
 
 
                 {/* Training Dataset */}
@@ -812,9 +933,8 @@ export default function AutoDLWorkspace() {
                                         + "folder per class."
                                     )
                                     : (
-                                        "CSV with numeric "
-                                        + "features and target "
-                                        + "column as the final column."
+                                        "CSV with numeric features and "
+                                        + "the explicitly selected target column."
                                     )
                             }
 
@@ -885,6 +1005,32 @@ export default function AutoDLWorkspace() {
 
                 </div>
 
+
+                {selectedFile && (
+                    <button
+                        type="button"
+                        onClick={() => void inspectFile(selectedFile)}
+                        className="mt-4 rounded-lg border border-indigo-500/30 px-4 py-2 text-sm text-indigo-300"
+                    >
+                        Refresh Dataset Inspection
+                    </button>
+                )}
+
+                {inspection && (
+                    <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950 p-4 text-sm text-slate-300">
+                        {inspection.file_count != null && <p><strong>Image files:</strong> {inspection.file_count}</p>}
+                        {inspection.row_count != null && <p><strong>Rows:</strong> {inspection.row_count}</p>}
+                        {inspection.columns.length > 0 && <p className="mt-1"><strong>Columns:</strong> {inspection.columns.join(", ")}</p>}
+                        {Object.keys(inspection.class_counts).length > 0 && <p className="mt-1"><strong>Class counts:</strong> {Object.entries(inspection.class_counts).map(([name, count]) => `${name}: ${count}`).join(", ")}</p>}
+                        {inspection.dimensions.length > 0 && <p className="mt-1"><strong>Dimensions:</strong> {inspection.dimensions.map(item => `${item.width}×${item.height} (${item.count})`).join(", ")}</p>}
+                        {Object.keys(inspection.missing_values).length > 0 && <p className="mt-1"><strong>Missing values:</strong> {Object.entries(inspection.missing_values).map(([name, count]) => `${name}: ${count}`).join(", ")}</p>}
+                        {inspection.target_valid != null && <p className={`mt-1 ${inspection.target_valid ? "text-emerald-300" : "text-amber-300"}`}><strong>Target:</strong> {inspection.target_valid ? `${inspection.target_column} is valid` : inspection.target_error}</p>}
+                    </div>
+                )}
+
+                {inspectionError && (
+                    <p className="mt-3 text-sm text-red-300">{inspectionError}</p>
+                )}
 
                 {/* Train Button */}
 
@@ -1041,6 +1187,18 @@ export default function AutoDLWorkspace() {
                                 the dataset and training the
                                 selected neural network.
                             </p>
+
+                            {job?.progress && (
+                                <div className="mt-4 min-w-64">
+                                    <div className="flex justify-between text-xs text-slate-400">
+                                        <span>{job.progress.stage.replaceAll("_", " ")}</span>
+                                        <span>{job.progress.current_epoch}/{job.progress.total_epochs} epochs · {job.progress.percentage.toFixed(0)}%</span>
+                                    </div>
+                                    <div className="mt-2 h-2 overflow-hidden rounded bg-slate-800">
+                                        <div className="h-full bg-indigo-500" style={{ width: `${Math.min(job.progress.percentage, 100)}%` }} />
+                                    </div>
+                                </div>
+                            )}
 
                         </div>
 
@@ -1498,6 +1656,23 @@ export default function AutoDLWorkspace() {
                         }
 
 
+                    <TrainingCurves history={job.training_history} />
+                    <ConfusionMatrixView
+                        labels={job.evaluation?.labels}
+                        matrix={job.evaluation?.confusion_matrix}
+                    />
+                    {!!job.leaderboard?.length && (
+                        <div className="rounded-xl border border-slate-700 bg-slate-950 p-4">
+                            <h3 className="mb-3 font-semibold text-white">Model Comparison</h3>
+                            <div className="space-y-2 text-sm">{job.leaderboard.map((item, index) => (
+                                <div key={`${item.model_name}-${index}`} className="flex justify-between text-slate-300">
+                                    <span>{item.rank ? `#${item.rank} ` : ""}{item.model_name}</span>
+                                    <span>{item.success ? `${toPercent(item.accuracy)} accuracy` : item.error ?? "Failed"}</span>
+                                </div>
+                            ))}</div>
+                        </div>
+                    )}
+
                         {/* Artifact */}
 
                         {
@@ -1597,6 +1772,13 @@ export default function AutoDLWorkspace() {
                                         </div>
 
                                     </div>
+
+                                    {prediction?.gradcam_image && (
+                                        <div className="mt-6 rounded-xl border border-slate-700 bg-slate-950 p-4">
+                                            <h3 className="mb-3 font-semibold text-white">Grad-CAM</h3>
+                                            <img src={prediction.gradcam_image} alt="Grad-CAM evidence heatmap" className="max-h-80 rounded-lg" />
+                                        </div>
+                                    )}
 
                                 </div>
 

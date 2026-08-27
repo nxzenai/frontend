@@ -71,8 +71,9 @@ export default function useAutoDLJob() {
         fallback: string,
     ) => {
 
+        const detail = err?.response?.data?.detail;
         return (
-            err?.response?.data?.detail ??
+            (typeof detail === "object" ? detail?.message : detail) ??
             err?.response?.data?.message ??
             err?.message ??
             fallback
@@ -91,6 +92,8 @@ export default function useAutoDLJob() {
                 modality: Modality,
                 architecture: DLArchitecture,
                 maxEpochs: number,
+                targetColumn?: string,
+                candidateArchitectures?: DLArchitecture[],
             ) => {
 
                 try {
@@ -108,15 +111,34 @@ export default function useAutoDLJob() {
                             modality,
                             architecture,
                             maxEpochs,
+                            targetColumn,
+                            candidateArchitectures,
                         );
 
+                    let currentJob = newJob;
+                    setJob(currentJob);
 
-                    setJob(
-                        newJob
-                    );
+                    while (
+                        currentJob.status === "queued"
+                        || currentJob.status === "pending"
+                        || currentJob.status === "running"
+                    ) {
+                        await new Promise((resolve) =>
+                            setTimeout(resolve, 2000)
+                        );
+                        currentJob = await AutoDLService.getJob(
+                            currentJob.job_id
+                        );
+                        setJob(currentJob);
+                    }
 
+                    if (currentJob.status === "failed") {
+                        throw new Error(
+                            currentJob.error ?? "AutoDL training failed."
+                        );
+                    }
 
-                    return newJob;
+                    return currentJob;
 
                 } catch (err: any) {
 
