@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import AIRegistryService from "@/services/ai-registry.service";
 import type { AIMonitoringSummary, AIModelStage, AIRegisteredModel } from "@/types/ai-registry";
 
-export default function AIModelRegistryPanel({ module }: { module: "autodl" | "autonlp" }) {
+export default function AIModelRegistryPanel({ module, showQueue = true }: { module: "autodl" | "autonlp"; showQueue?: boolean }) {
   const [models, setModels] = useState<AIRegisteredModel[]>([]);
   const [monitoring, setMonitoring] = useState<AIMonitoringSummary | null>(null);
   const [error, setError] = useState("");
@@ -32,7 +32,7 @@ export default function AIModelRegistryPanel({ module }: { module: "autodl" | "a
         <h2 className="text-lg font-bold text-white">Model Registry</h2>
         {monitoring && (
           <span className="text-xs text-slate-400">
-            Queue {monitoring.queue.depth} · Predictions {monitoring.predictions.count} · Errors {monitoring.predictions.errors}
+            {showQueue ? `Queue ${monitoring.queue.depth} · ` : ""}Predictions {monitoring.predictions.count} · Errors {monitoring.predictions.errors}
           </span>
         )}
       </div>
@@ -74,7 +74,9 @@ export default function AIModelRegistryPanel({ module }: { module: "autodl" | "a
                     await AIRegistryService.retrain(module, model.id, file);
                     setError("");
                   } catch {
-                    setError("Retraining could not be queued for this dataset.");
+                    setError(showQueue
+                      ? "Retraining could not be queued for this dataset."
+                      : "Retraining could not be started for this dataset.");
                   } finally {
                     event.target.value = "";
                   }
