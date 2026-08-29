@@ -1,160 +1,52 @@
 import api from "@/lib/studioApi";
-
-import {
-    AutoNLPJobCreateRequest,
-    AutoNLPJobResponse,
-    AutoNLPDatasetInspection,
-    AutoNLPBatchPredictionResponse,
-    AutoNLPPredictRequest,
-    AutoNLPPredictResponse,
+import type {
+  AutoNLPBatchPredictionResponse, AutoNLPDatasetInspection, AutoNLPModelSummary,
+  AutoNLPPredictResponse, AutoNLPTrainRequest, AutoNLPTrainResponse,
 } from "@/types/autonlp";
 
 
 class AutoNLPService {
+  async inspect(file: File, textColumn?: string, targetColumn?: string): Promise<AutoNLPDatasetInspection> {
+    const data = new FormData();
+    data.append("file", file);
+    if (textColumn) data.append("text_column", textColumn);
+    if (targetColumn) data.append("target_column", targetColumn);
+    return (await api.post<AutoNLPDatasetInspection>("/autonlp/inspect", data)).data;
+  }
 
-    async inspect(
-        file: File,
-        textColumn?: string,
-        targetColumn?: string,
-    ): Promise<AutoNLPDatasetInspection> {
-        const formData = new FormData();
-        formData.append("file", file);
-        if (textColumn) formData.append("text_column", textColumn);
-        if (targetColumn) formData.append("target_column", targetColumn);
-        return (await api.post<AutoNLPDatasetInspection>(
-            "/autonlp/inspect",
-            formData,
-        )).data;
-    }
+  async train(request: AutoNLPTrainRequest): Promise<AutoNLPTrainResponse> {
+    const data = new FormData();
+    data.append("file", request.file, request.file.name);
+    data.append("text_column", request.text_column);
+    data.append("target_column", request.target_column);
+    data.append("task", request.task);
+    data.append("max_epochs", String(request.max_epochs));
+    data.append("strategy", request.strategy);
+    data.append("confirmed", String(request.confirmed));
+    data.append("label_display_mapping", JSON.stringify(request.label_display_mapping));
+    if (request.candidate_architectures?.length) data.append("candidate_architectures", request.candidate_architectures.join(","));
+    return (await api.post<AutoNLPTrainResponse>("/autonlp/train", data)).data;
+  }
 
-    async listJobs(): Promise<AutoNLPJobResponse[]> {
-        return (await api.get<AutoNLPJobResponse[]>("/autonlp/jobs")).data;
-    }
+  async predict(modelId: string, text: string): Promise<AutoNLPPredictResponse> {
+    return (await api.post<AutoNLPPredictResponse>("/autonlp/predict", { model_id: modelId, text })).data;
+  }
 
-    async archiveJob(jobId: string): Promise<void> {
-        await api.delete(`/autonlp/jobs/${jobId}`);
-    }
+  async predictBatch(modelId: string, file: File, textColumn: string): Promise<AutoNLPBatchPredictionResponse> {
+    const data = new FormData();
+    data.append("model_id", modelId);
+    data.append("file", file);
+    data.append("text_column", textColumn);
+    return (await api.post<AutoNLPBatchPredictionResponse>("/autonlp/predict/csv", data)).data;
+  }
 
-    async predictBatch(
-        jobId: string,
-        file: File,
-        textColumn: string,
-    ): Promise<AutoNLPBatchPredictionResponse> {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("text_column", textColumn);
-        return (await api.post<AutoNLPBatchPredictionResponse>(
-            `/autonlp/jobs/${jobId}/predict/csv`,
-            formData,
-        )).data;
-    }
+  async listModels(): Promise<AutoNLPModelSummary[]> {
+    return (await api.get<AutoNLPModelSummary[]>("/autonlp/models")).data;
+  }
 
-    ////////////////////////////////////////////////////////////
-    // Start AutoNLP Training Job
-    ////////////////////////////////////////////////////////////
-
-    async startJob(
-        request: AutoNLPJobCreateRequest,
-    ): Promise<AutoNLPJobResponse> {
-
-        ////////////////////////////////////////////////////////
-        // Build Multipart Form
-        ////////////////////////////////////////////////////////
-
-        const formData = new FormData();
-
-        formData.append(
-            "file",
-            request.file,
-            request.file.name,
-        );
-
-        formData.append(
-            "text_column",
-            request.text_column,
-        );
-
-        formData.append(
-            "target_column",
-            request.target_column,
-        );
-
-        formData.append(
-            "task",
-            request.task,
-        );
-
-        formData.append(
-            "max_epochs",
-            String(
-                request.max_epochs,
-            ),
-        );
-        if (request.candidate_architectures?.length) {
-            formData.append("candidate_architectures", request.candidate_architectures.join(","));
-        }
-
-
-        ////////////////////////////////////////////////////////
-        // Request
-        ////////////////////////////////////////////////////////
-
-        const response =
-            await api.post<AutoNLPJobResponse>(
-                "/autonlp/jobs",
-                formData,
-                {
-                    headers: {
-                        "Content-Type":
-                            "multipart/form-data",
-                    },
-                },
-            );
-
-
-        ////////////////////////////////////////////////////////
-        // Response
-        ////////////////////////////////////////////////////////
-
-        return response.data;
-    }
-
-
-    ////////////////////////////////////////////////////////////
-    // Get AutoNLP Job
-    ////////////////////////////////////////////////////////////
-
-    async getJob(
-        jobId: string,
-    ): Promise<AutoNLPJobResponse> {
-
-        const response =
-            await api.get<AutoNLPJobResponse>(
-                `/autonlp/jobs/${jobId}`,
-            );
-
-        return response.data;
-    }
-
-
-    ////////////////////////////////////////////////////////////
-    // Predict Using Saved LSTM Artifact
-    ////////////////////////////////////////////////////////////
-
-    async predict(
-        jobId: string,
-        request: AutoNLPPredictRequest,
-    ): Promise<AutoNLPPredictResponse> {
-
-        const response =
-            await api.post<AutoNLPPredictResponse>(
-                `/autonlp/jobs/${jobId}/predict`,
-                request,
-            );
-
-        return response.data;
-    }
+  async monitoring(): Promise<Record<string, unknown>> {
+    return (await api.get<Record<string, unknown>>("/autonlp/monitoring")).data;
+  }
 }
-
 
 export default new AutoNLPService();
