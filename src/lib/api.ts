@@ -7,31 +7,19 @@ export const api = axios.create({
 
 });
 
-//import axios from "axios";
+api.interceptors.request.use(
+  (config) => {
+    if (typeof window !== "undefined") {
+      const token =
+        localStorage.getItem("access_token") ||
+        localStorage.getItem("token");
 
-//const studioApiUrl = process.env.NEXT_PUBLIC_STUDIO_API_URL;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
 
-//if (!studioApiUrl) {
-//  throw new Error("NEXT_PUBLIC_STUDIO_API_URL is not configured.");
-//}
-
-//const studioApi = axios.create({
-  //baseURL: studioApiUrl,
- // headers: {
-    //"Content-Type": "application/json",
-  //},
-//});
-
-//studioApi.interceptors.request.use((config) => {
-  //if (typeof window !== "undefined") {
-    //const token = localStorage.getItem("token");
-
-    //if (token) {
-      //config.headers.Authorization = `Bearer ${token}`;
-    //}
-  //}
-
- // return config;
-//});
-
-//export default studioApi;
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
