@@ -22,6 +22,16 @@ export interface ConversationSummary {
 
 export interface ConversationDetail extends ConversationSummary {
   messages: ChatMessage[];
+  pending_prediction?: {
+    tool: string; action?: string; attachment_ids?: string[];
+    arguments?: Record<string, unknown>; original_action?: string;
+    candidates?: Array<Record<string, unknown>>; missing_fields?: string[]; prompt?: string;
+  } | null;
+  pending_confirmation?: {
+    id: string; tool: string; action?: string; attachment_ids?: string[];
+    arguments?: Record<string, unknown>;
+  } | null;
+  active_lab_resources?: Record<string, { run_id?: string; status?: string; task?: string }>;
 }
 
 export interface ChatRequest {
@@ -34,6 +44,7 @@ export interface ChatRequest {
   attachment_ids?: string[];
   project_id?: string | null;
   confirmed_tools?: string[];
+  confirmation_id?: string;
   tool_arguments?: Record<string, Record<string, unknown>>;
 }
 
@@ -41,11 +52,13 @@ export type StreamEvent =
   | { type: "metadata"; conversation_id: string; generation_id: string; requested_tier: ModelTier; model_tier: ModelTier; model_name: string; reasoning: ReasoningLevel; route_reason: string }
   | { type: "delta"; content: string }
   | { type: "tool"; tool: string; status: "running" | "completed" | "failed"; message?: string; citations?: Citation[] }
-  | { type: "confirmation_required"; tool: string; action?: string; message: string; attachment_ids: string[]; arguments: Record<string, unknown> }
+  | { type: "confirmation_required"; conversation_id?: string; confirmation_id: string; tool: string; action?: string; message: string; attachment_ids: string[]; arguments: Record<string, unknown> }
   | { type: "done"; status: "completed" | "cancelled"; message?: ChatMessage; duration_ms: number }
   | { type: "error"; code: string; message: string; details?: {
       candidates?: Array<Record<string, unknown>>;
       missing_fields?: string[];
+      conversation_id?: string;
+      prompt?: string;
       resume?: {
         tool: string; action?: string; attachment_ids: string[];
         arguments: Record<string, unknown>; query: string;

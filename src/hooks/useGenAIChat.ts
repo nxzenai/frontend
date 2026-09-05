@@ -18,31 +18,51 @@ type ResolvedTool = {
   arguments: Record<string, unknown>;
 };
 
+type PendingConfirmation = ResolvedTool & { message: string; query: string; confirmationId: string };
+
 type PendingResolution = ResolvedTool & {
   query: string;
   candidates: Array<Record<string, unknown>>;
   missingFields: string[];
+  message?: string;
 };
 
 function resolveToolRequest(query: string, attachmentIds: string[]): ResolvedTool | null {
   let tool = "";
   if (/\b(python lab|inspect (?:my )?notebook|notebook cells?|run (?:this )?(?:python|cell)|execute (?:this )?(?:python|cell))\b/i.test(query)) tool = "python_lab";
   else if (/\b(sql lab|database schema|run (?:this )?(?:sql|query)|execute (?:this )?(?:sql|query)|query (?:my|the) database)\b/i.test(query)) tool = "sql_lab";
-  else if (/\b(autonlp|natural language processing|text classification|sentiment analysis)\b/i.test(query)) tool = "autonlp";
+  else if (/\b(autonlp|natural language processing|text classification|sentiment(?: analysis)?|intent(?: classification)?|spam(?: classification)?)\b/i.test(query)) tool = "autonlp";
   else if (/\b(autodl|deep learning|image classification|time[- ]series neural)\b/i.test(query)) tool = "autodl";
   else if (/\b(automl|machine learning|clustering)\b/i.test(query)) tool = "automl";
   else if (/\b(eda|exploratory data analysis|data quality|data profiling)\b/i.test(query)) tool = "eda";
+  if (!tool && (/\btrain\b/i.test(query) || (/\b(retrain|build|create|fit)\b/i.test(query) && /\bmodel\b/i.test(query)))) {
+    if (/\b(sentiment|intent|spam|text\s+classif)\b/i.test(query)) tool = "autonlp";
+    else if (/\b(deep learning|neural|image\s+classif\w*|time[- ]series|tabular\s+(?:classif\w*|regress\w*))\b/i.test(query)) tool = "autodl";
+    else if (/\b(churn|classif|regress|cluster|machine learning)\b/i.test(query)) tool = "automl";
+  }
   if (!tool) return null;
+
+  const trainingIntent = /\b(train|retrain)\b/i.test(query)
+    || (/\b(build|create|fit)\b/i.test(query) && /\bmodel\b/i.test(query));
+  const predictionIntent = /\bpredict(?:ion)?\b/i.test(query);
+  if (trainingIntent && predictionIntent) {
+    return { tool, action: "ambiguous", attachmentIds, arguments: { action: "ambiguous" } };
+  }
 
   const actionRules: Record<string, Array<[RegExp, string]>> = {
     python_lab: [[/\b(execute|run)\b/i, "execute"], [/\b(inspect|notebook|cells?)\b/i, "inspect"], [/\bstatus\b/i, "status"], [/\bruntime\b/i, "runtime"]],
     sql_lab: [[/\bschema\b/i, "schema"], [/\bstatistics\b/i, "statistics"], [/\b(execute|run|query|select|with|explain|insert|update|delete|create|alter|drop|truncate)\b/i, "query"]],
     eda: [[/\btransform/i, "transform"], [/\breport\b/i, "report"], [/\bquality\b/i, "quality"], [/\bprofile\b/i, "profile"], [/\bpreview\b/i, "preview"], [/\boverview\b/i, "overview"], [/\b(upload|import)\b/i, "import"], [/\b(analy[sz]e|perform)\b/i, "analyze"], [/\blist\b/i, "list"]],
-    automl: [[/\bpredict\b/i, "predict"], [/\btrain\b/i, "train"], [/\bpreview\b/i, "preview"], [/\b(inspect|analy[sz]e)\b/i, "inspect"], [/\bmodel\b/i, "models"]],
-    autonlp: [[/\bpredict\b/i, "predict"], [/\btrain\b/i, "train"], [/\b(inspect|analy[sz]e)\b/i, "inspect"], [/\bmonitor/i, "monitoring"], [/\bmodel\b/i, "models"]],
-    autodl: [[/\bpredict\b/i, "predict"], [/\btrain\b/i, "train"], [/\b(inspect|analy[sz]e)\b/i, "inspection"], [/\bresult\b/i, "result"], [/\breadiness\b/i, "readiness"], [/\bmodel\b/i, "models"]],
+    automl: [[/\bpredict\b/i, "predict"], [/\b(train|retrain|build|create|fit)\b/i, "train"], [/\bpreview\b/i, "preview"], [/\b(inspect|analy[sz]e)\b/i, "inspect"], [/\bmodel\b/i, "models"]],
+    autonlp: [[/\bpredict\b/i, "predict"], [/\b(train|retrain|build|create|fit)\b/i, "train"], [/\b(inspect|analy[sz]e)\b/i, "inspect"], [/\bmonitor/i, "monitoring"], [/\bmodel\b/i, "models"]],
+    autodl: [[/\bpredict\b/i, "predict"], [/\bresults?\b/i, "result"], [/\b(status|progress|ready|latest|last)\b/i, "status"], [/\bcancel\b/i, "cancel"], [/\b(train|retrain|build|create|fit)\b/i, "train"], [/\b(inspect|analy[sz]e)\b/i, "inspection"], [/\breadiness\b/i, "readiness"], [/\bmodel\b/i, "models"]],
   };
-  const action = actionRules[tool]?.find(([pattern]) => pattern.test(query))?.[1];
+  const nlpPredictionIntent = tool === "autonlp" && !trainingIntent
+    && /\b(sentiment|intent|spam)\b/i.test(query)
+    && /\b(analy[sz]e|classif(?:y|ication)|predict)\b/i.test(query);
+  const action = nlpPredictionIntent
+    ? "predict"
+    : actionRules[tool]?.find(([pattern]) => pattern.test(query))?.[1];
   if (!action) return null;
   const args: Record<string, unknown> = {};
   if (action) args.action = action;
@@ -85,7 +105,7 @@ export default function useGenAIChat() {
   const [tools, setTools] = useState<ToolStatus[]>([]);
   const [routeInfo, setRouteInfo] = useState("");
   const [toolActivity, setToolActivity] = useState("");
-  const [pendingConfirmation, setPendingConfirmation] = useState<(ResolvedTool & { message: string; query: string }) | null>(null);
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [pendingResolution, setPendingResolution] = useState<PendingResolution | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -118,7 +138,26 @@ export default function useGenAIChat() {
     setActiveProjectId(conversation.project_id ?? null);
     setAttachments(await GenAIService.attachments(id));
     setSelectedAttachmentIds([]);
-    setRouteInfo(""); setToolActivity(""); setPendingConfirmation(null); setPendingResolution(null);
+    setRouteInfo(""); setToolActivity(""); setPendingConfirmation(null);
+    const pending = conversation.pending_prediction;
+    const hasPendingInput = Boolean(pending?.candidates?.length || pending?.missing_fields?.length);
+    setPendingResolution(pending && hasPendingInput ? {
+      tool: pending.tool, action: pending.action, attachmentIds: pending.attachment_ids ?? [],
+      arguments: pending.arguments ?? {}, query: pending.original_action ?? "Continue prediction",
+      candidates: pending.candidates ?? [], missingFields: pending.missing_fields ?? [],
+      message: pending.prompt,
+    } : null);
+    const confirmation = conversation.pending_confirmation;
+    setSelectedAttachmentIds(
+      pending?.attachment_ids ?? confirmation?.attachment_ids ?? [],
+    );
+    setPendingConfirmation(confirmation ? {
+      tool: confirmation.tool, action: confirmation.action,
+      attachmentIds: confirmation.attachment_ids ?? [], arguments: confirmation.arguments ?? {},
+      query: pending?.original_action ?? "Continue confirmed action",
+      confirmationId: confirmation.id,
+      message: `Confirm before allowing ${confirmation.tool.replaceAll("_", " ")} to continue.`,
+    } : null);
   }, [isLoading]);
 
   const newChat = useCallback(() => {
@@ -127,7 +166,10 @@ export default function useGenAIChat() {
     setError(null); setRouteInfo(""); setToolActivity(""); setPendingConfirmation(null); setPendingResolution(null);
   }, []);
 
-  const sendMessage = useCallback(async (content: string, regenerate = false, confirmed: ResolvedTool | null = null, preserveUser = false) => {
+  const sendMessage = useCallback(async (
+    content: string, regenerate = false, resolvedOverride: ResolvedTool | null = null,
+    preserveUser = false, confirmationId?: string,
+  ) => {
     const query = content.trim();
     if (!query || isLoading) return;
     const temporaryAssistantId = `stream-${Date.now()}`;
@@ -141,19 +183,26 @@ export default function useGenAIChat() {
     controllerRef.current = controller;
     let streamedError: string | null = null;
     let completed = false;
-    const continuation = !confirmed && pendingResolution ? {
+    const continuationAttachments = pendingResolution && selectedAttachmentIds.length > 0
+      ? selectedAttachmentIds : pendingResolution?.attachmentIds ?? [];
+    const continuationArguments: Record<string, unknown> = pendingResolution ? { ...pendingResolution.arguments } : {};
+    if (pendingResolution && continuationAttachments.length === 1
+      && continuationAttachments[0] !== pendingResolution.attachmentIds[0]) {
+      continuationArguments.attachment_id = continuationAttachments[0];
+    }
+    const continuation = !resolvedOverride && !confirmationId && pendingResolution ? {
       tool: pendingResolution.tool, action: pendingResolution.action,
-      attachmentIds: pendingResolution.attachmentIds,
-      arguments: { ...pendingResolution.arguments },
+      attachmentIds: continuationAttachments,
+      arguments: continuationArguments,
     } : null;
-    const resolved = confirmed ?? continuation ?? resolveToolRequest(query, selectedAttachmentIds);
+    const resolved = resolvedOverride ?? continuation ?? resolveToolRequest(query, selectedAttachmentIds);
     const messageAttachmentIds = resolved?.attachmentIds ?? selectedAttachmentIds;
     if (continuation) setPendingResolution(null);
     try {
       await GenAIService.streamChat({
         conversation_id: activeConversationId, message: query, tier, reasoning, regenerate,
         tools: resolved ? [resolved.tool] : [], attachment_ids: messageAttachmentIds,
-        project_id: activeProjectId, confirmed_tools: confirmed ? [confirmed.tool] : [],
+        project_id: activeProjectId, confirmation_id: confirmationId,
         tool_arguments: resolved ? { [resolved.tool]: resolved.arguments } : {},
       }, (event: StreamEvent) => {
         if (event.type === "metadata") {
@@ -163,8 +212,10 @@ export default function useGenAIChat() {
         } else if (event.type === "tool") {
           setToolActivity(`${event.tool.replaceAll("_", " ")}: ${event.status}${event.message ? ` — ${event.message}` : ""}`);
         } else if (event.type === "confirmation_required") {
+          if (event.conversation_id) setActiveConversationId(event.conversation_id);
           setPendingConfirmation({
             tool: event.tool, action: event.action, message: event.message, query,
+            confirmationId: event.confirmation_id,
             attachmentIds: event.attachment_ids, arguments: event.arguments,
           });
           streamedError = event.message;
@@ -173,17 +224,25 @@ export default function useGenAIChat() {
             ? { ...message, content: message.content + event.content } : message));
         } else if (event.type === "done" && event.message) {
           completed = true;
+          setPendingResolution(null);
+          setPendingConfirmation(null);
           setMessages(current => current.map(message => message.id === temporaryAssistantId ? event.message! : message));
         } else if (event.type === "error") {
           streamedError = event.message;
           setError(event.message);
+          if (event.details?.conversation_id) setActiveConversationId(event.details.conversation_id);
           if (event.details?.resume) {
             setPendingResolution({
               tool: event.details.resume.tool, action: event.details.resume.action,
               attachmentIds: event.details.resume.attachment_ids,
               arguments: event.details.resume.arguments, query: event.details.resume.query,
               candidates: event.details.candidates ?? [], missingFields: event.details.missing_fields ?? [],
+              message: event.details.prompt,
             });
+          } else if (resolved && ["automl", "autonlp", "autodl"].includes(resolved.tool)) {
+            setPendingResolution(null);
+            setPendingConfirmation(null);
+            setSelectedAttachmentIds([]);
           }
         }
       }, controller.signal);
@@ -253,7 +312,7 @@ export default function useGenAIChat() {
     setError(null); setToolActivity(`Reading ${file.name}…`);
     try {
       const attachment = await GenAIService.uploadAttachment(file, activeConversationId, activeProjectId);
-      setAttachments(current => [...current, attachment]);
+      setAttachments(current => [...current.filter(item => item.id !== attachment.id), attachment]);
       setSelectedAttachmentIds(current => [...new Set([...current, attachment.id])]);
       setToolActivity(`${file.name} is ready.`);
     } catch (reason) {
@@ -268,14 +327,15 @@ export default function useGenAIChat() {
 
   const toggleAttachment = useCallback((id: string) => {
     setSelectedAttachmentIds(current => current.includes(id)
-      ? current.filter(item => item !== id) : [...current, id]);
-  }, []);
+      ? current.filter(item => item !== id)
+      : pendingResolution ? [id] : [...current, id]);
+  }, [pendingResolution]);
 
   const confirmTool = useCallback(async () => {
     const pending = pendingConfirmation;
     if (!pending) return;
     setPendingConfirmation(null);
-    await sendMessage(pending.query, false, pending, true);
+    await sendMessage(pending.query, false, null, true, pending.confirmationId);
   }, [pendingConfirmation, sendMessage]);
 
   const choosePredictionResource = useCallback(async (candidate: Record<string, unknown>) => {
@@ -290,6 +350,11 @@ export default function useGenAIChat() {
     }, true);
   }, [pendingResolution, sendMessage]);
 
+  const cancelPendingPrediction = useCallback(async () => {
+    setPendingResolution(null); setPendingConfirmation(null); setError(null);
+    await sendMessage("cancel");
+  }, [sendMessage]);
+
   return {
     conversations, activeConversationId, messages, tier, setTier, reasoning, setReasoning,
     health, preferences, memories, projects, activeProjectId, attachments, selectedAttachmentIds, tools,
@@ -297,7 +362,11 @@ export default function useGenAIChat() {
     newChat, openConversation, sendMessage, stopGeneration, regenerate,
     renameConversation, deleteConversation, savePreferences, addMemory, deleteMemory,
     selectProject, createProject, deleteProject, uploadAttachment, deleteAttachment, toggleAttachment,
-    confirmTool, dismissConfirmation: () => setPendingConfirmation(null),
-    choosePredictionResource, dismissResolution: () => setPendingResolution(null),
+    confirmTool,
+    dismissConfirmation: () => {
+      void cancelPendingPrediction();
+    },
+    choosePredictionResource,
+    dismissResolution: () => void cancelPendingPrediction(),
   };
 }
