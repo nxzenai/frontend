@@ -43,6 +43,18 @@ function CodePre({ children }: ComponentProps<"pre">) {
 }
 
 
+function missingInputQuestion(fields: string[]) {
+  const normalized = fields.map(field => field.replaceAll("_", " ").toLowerCase());
+  if (normalized.includes("prediction text")) return "What text would you like me to analyze?";
+  if (normalized.includes("text column")) return "Which column contains the text to analyze?";
+  if (normalized.includes("task")) return "Is this a classification or regression task?";
+  if (normalized.some(field => field === "dataset" || field.includes("attachment") || field.includes("file"))) {
+    return "Please attach the dataset you want to use.";
+  }
+  return `What value should I use for ${normalized.join(", ")}?`;
+}
+
+
 export default function ChatWindow() {
   const chat = useGenAIChat();
   const [input, setInput] = useState("");
@@ -166,7 +178,8 @@ export default function ChatWindow() {
             return <button key={`${label}-${index}`} type="button" onClick={() => void chat.choosePredictionResource(candidate)} className="rounded border border-blue-300/40 px-3 py-1.5 hover:bg-blue-400/10">{label}</button>;
           })}
           <button type="button" onClick={chat.dismissResolution} className="ml-auto text-blue-200/70">Cancel</button>
-        </div> : <div className="flex items-center gap-2"><span className="flex-1">Provide: {chat.pendingResolution.missingFields.join(", ")}</span><button type="button" onClick={chat.dismissResolution} className="text-blue-200/70">Cancel</button></div>}
+        </div> : <div className="flex items-center gap-2"><span className="flex-1">{chat.pendingResolution.message
+          ?? missingInputQuestion(chat.pendingResolution.missingFields)}</span><button type="button" onClick={chat.dismissResolution} className="text-blue-200/70">Cancel</button></div>}
       </div>}
       {chat.pendingConfirmation && <div className="flex items-center gap-3 border-t border-amber-500/20 bg-amber-500/10 px-5 py-3 text-sm text-amber-100"><AlertCircle size={16} /><span className="flex-1">{chat.pendingConfirmation.message}</span><button type="button" onClick={() => void chat.confirmTool()} className="rounded bg-amber-500 px-3 py-1.5 font-semibold text-slate-950">Confirm</button><button type="button" onClick={chat.dismissConfirmation} className="rounded border border-amber-400/40 px-3 py-1.5">Cancel</button></div>}
       {chat.error && <div className="border-t border-red-500/20 bg-red-500/10 px-5 py-2 text-sm text-red-300">{chat.error}</div>}
