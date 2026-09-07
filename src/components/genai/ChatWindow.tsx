@@ -171,7 +171,7 @@ export default function ChatWindow() {
       {chat.pendingResolution && <div className="border-t border-blue-500/20 bg-blue-500/10 px-5 py-3 text-sm text-blue-100">
         {chat.pendingResolution.candidates.length > 0 ? <div className="flex flex-wrap items-center gap-2">
           <span className="mr-1">{chat.pendingResolution.candidates.some(candidate => candidate.attachment_id)
-            ? "Choose an image:"
+            ? chat.pendingResolution.action === "train" ? "Choose a dataset:" : "Choose an image or CSV:"
             : chat.pendingResolution.action === "predict" ? "Choose a trained model:" : "Choose a resource:"}</span>
           {chat.pendingResolution.candidates.map((candidate, index) => {
             const label = String(candidate.name ?? candidate.model_type ?? candidate.filename ?? `Model ${index + 1}`);
@@ -192,7 +192,7 @@ export default function ChatWindow() {
           </span>;
         })}</div>}
         <form onSubmit={submit} className="mx-auto flex max-w-4xl items-end gap-2 rounded-2xl border border-slate-700 bg-slate-950 p-2 focus-within:border-pink-500">
-          <input ref={fileRef} type="file" multiple accept=".pdf,.docx,.txt,.csv,.xlsx,.py,.sql,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff" className="hidden" onChange={event => { Array.from(event.target.files ?? []).forEach(file => void chat.uploadAttachment(file)); event.currentTarget.value = ""; }} />
+          <input ref={fileRef} type="file" multiple accept=".pdf,.docx,.txt,.csv,.xlsx,.zip,.py,.sql,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff" className="hidden" onChange={event => { Array.from(event.target.files ?? []).forEach(file => void chat.uploadAttachment(file)); event.currentTarget.value = ""; }} />
           <button type="button" onClick={() => fileRef.current?.click()} className="rounded-xl p-3 text-slate-400 hover:bg-slate-800 hover:text-white" title="Attach a document, dataset, source file, or image"><Paperclip size={16} /></button>
           <textarea value={input} onChange={event => setInput(event.target.value)} onKeyDown={inputKeyDown} rows={1} placeholder="Message the assistant" className="max-h-40 min-h-11 flex-1 resize-none bg-transparent px-3 py-2.5 text-sm text-white outline-none" />
           {chat.isLoading ? <button type="button" onClick={() => void chat.stopGeneration()} className="rounded-xl bg-slate-700 p-3 text-white" title="Stop generation"><Square size={16} /></button> : <button type="submit" disabled={!input.trim()} className="rounded-xl bg-pink-600 p-3 text-white disabled:opacity-40" title="Send"><Send size={16} /></button>}
