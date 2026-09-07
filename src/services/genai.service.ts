@@ -85,6 +85,18 @@ class GenAIService {
     ).data;
   }
 
+  async setActiveAttachments(
+    conversationId: string,
+    attachmentIds: string[]
+  ): Promise<string[]> {
+    return (
+      await api.put<{ attachment_ids: string[] }>(
+        `/genai/conversations/${conversationId}/active-attachments`,
+        { attachment_ids: attachmentIds }
+      )
+    ).data.attachment_ids;
+  }
+
   async streamChat(
     request: ChatRequest,
     onEvent: (event: StreamEvent) => void,
