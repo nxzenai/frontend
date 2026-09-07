@@ -22,6 +22,7 @@ export interface ConversationSummary {
 
 export interface ConversationDetail extends ConversationSummary {
   messages: ChatMessage[];
+  active_attachment_ids?: string[];
   pending_prediction?: {
     tool: string; action?: string; attachment_ids?: string[];
     arguments?: Record<string, unknown>; original_action?: string;

@@ -3,6 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import GenAIService from "@/services/genai.service";
+import {
+  addComposerAttachment,
+  attachmentIdsForMessage,
+  preserveComposerAttachmentIds,
+  removeComposerAttachment,
+  restoreConversationAttachmentIds,
+} from "@/lib/genaiAttachmentLifecycle";
 import type {
   Attachment, ChatMessage, ConversationSummary, GenAIHealth, Memory, ModelTier,
   Preferences, Project, ProjectInput, ReasoningLevel, StreamEvent, ToolStatus,
@@ -86,9 +93,7 @@ export default function useGenAIChat() {
       message: pending.prompt,
     } : null);
     const confirmation = conversation.pending_confirmation;
-    setSelectedAttachmentIds(
-      pending?.attachment_ids ?? confirmation?.attachment_ids ?? [],
-    );
+    setSelectedAttachmentIds(restoreConversationAttachmentIds(conversation.active_attachment_ids));
     setPendingConfirmation(confirmation ? {
       tool: confirmation.tool, action: confirmation.action,
       attachmentIds: confirmation.attachment_ids ?? [], arguments: confirmation.arguments ?? {},
@@ -120,8 +125,6 @@ export default function useGenAIChat() {
     const controller = new AbortController();
     controllerRef.current = controller;
     let streamedError: string | null = null;
-    let completed = false;
-    let preserveSelectedAttachments = false;
     const continuationAttachments = pendingResolution && selectedAttachmentIds.length > 0
       ? selectedAttachmentIds : pendingResolution?.attachmentIds ?? [];
     const continuationArguments: Record<string, unknown> = pendingResolution ? { ...pendingResolution.arguments } : {};
@@ -138,7 +141,9 @@ export default function useGenAIChat() {
     // frontend supplies a tool only for a server-issued continuation or an
     // explicit resource-selection callback.
     const resolved = resolvedOverride ?? continuation;
-    const messageAttachmentIds = resolved?.attachmentIds ?? selectedAttachmentIds;
+    const messageAttachmentIds = attachmentIdsForMessage(
+      resolved?.attachmentIds ?? selectedAttachmentIds,
+    );
     if (continuation) setPendingResolution(null);
     try {
       await GenAIService.streamChat({
@@ -165,12 +170,12 @@ export default function useGenAIChat() {
           setMessages(current => current.map(message => message.id === temporaryAssistantId
             ? { ...message, content: message.content + event.content } : message));
         } else if (event.type === "done" && event.message) {
-          completed = true;
-          preserveSelectedAttachments = event.message.metadata?.handled_by === "native_training";
+          setSelectedAttachmentIds(current => preserveComposerAttachmentIds(current));
           setPendingResolution(null);
           setPendingConfirmation(null);
           setMessages(current => current.map(message => message.id === temporaryAssistantId ? event.message! : message));
         } else if (event.type === "error") {
+          setSelectedAttachmentIds(current => preserveComposerAttachmentIds(current));
           streamedError = event.message;
           setError(event.message);
           if (event.details?.conversation_id) setActiveConversationId(event.details.conversation_id);
@@ -185,7 +190,6 @@ export default function useGenAIChat() {
           } else if (resolved && ["automl", "autonlp", "autodl"].includes(resolved.tool)) {
             setPendingResolution(null);
             setPendingConfirmation(null);
-            setSelectedAttachmentIds([]);
           }
         }
       }, controller.signal);
@@ -196,7 +200,6 @@ export default function useGenAIChat() {
       }
     } finally {
       controllerRef.current = null; generationRef.current = null; setIsLoading(false);
-      if (completed && !preserveSelectedAttachments) setSelectedAttachmentIds([]);
       setMessages(current => current.filter(message => message.id !== temporaryAssistantId || message.content));
     }
   }, [activeConversationId, activeProjectId, isLoading, pendingResolution, reasoning, refreshConversations, selectedAttachmentIds, tier]);
@@ -255,24 +258,45 @@ export default function useGenAIChat() {
     setError(null); setToolActivity(`Reading ${file.name}…`);
     try {
       const attachment = await GenAIService.uploadAttachment(file, activeConversationId, activeProjectId);
+      const nextSelection = addComposerAttachment(selectedAttachmentIds, attachment.id);
+      if (activeConversationId) await GenAIService.setActiveAttachments(activeConversationId, nextSelection);
       setAttachments(current => [...current.filter(item => item.id !== attachment.id), attachment]);
-      setSelectedAttachmentIds(current => [...new Set([...current, attachment.id])]);
+      setSelectedAttachmentIds(nextSelection);
       setToolActivity(`${file.name} is ready.`);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "The file could not be attached."); setToolActivity("");
     }
-  }, [activeConversationId, activeProjectId]);
+  }, [activeConversationId, activeProjectId, selectedAttachmentIds]);
 
   const deleteAttachment = useCallback(async (id: string) => {
-    await GenAIService.deleteAttachment(id); setAttachments(current => current.filter(item => item.id !== id));
-    setSelectedAttachmentIds(current => current.filter(item => item !== id));
-  }, []);
+    const nextSelection = removeComposerAttachment(selectedAttachmentIds, id);
+    if (activeConversationId) await GenAIService.setActiveAttachments(activeConversationId, nextSelection);
+    try {
+      await GenAIService.deleteAttachment(id);
+    } catch (reason) {
+      if (activeConversationId) {
+        await GenAIService.setActiveAttachments(activeConversationId, selectedAttachmentIds).catch(() => undefined);
+      }
+      throw reason;
+    }
+    setAttachments(current => current.filter(item => item.id !== id));
+    setSelectedAttachmentIds(nextSelection);
+  }, [activeConversationId, selectedAttachmentIds]);
 
   const toggleAttachment = useCallback((id: string) => {
-    setSelectedAttachmentIds(current => current.includes(id)
-      ? current.filter(item => item !== id)
-      : pendingResolution ? [id] : [...current, id]);
-  }, [pendingResolution]);
+    const nextSelection = selectedAttachmentIds.includes(id)
+      ? removeComposerAttachment(selectedAttachmentIds, id)
+      : pendingResolution ? [id] : addComposerAttachment(selectedAttachmentIds, id);
+    setSelectedAttachmentIds(nextSelection);
+    if (activeConversationId) {
+      void GenAIService.setActiveAttachments(activeConversationId, nextSelection).catch(
+        reason => {
+          setSelectedAttachmentIds(selectedAttachmentIds);
+          setError(reason instanceof Error ? reason.message : "Attachment selection could not be saved.");
+        },
+      );
+    }
+  }, [activeConversationId, pendingResolution, selectedAttachmentIds]);
 
   const confirmTool = useCallback(async () => {
     const pending = pendingConfirmation;

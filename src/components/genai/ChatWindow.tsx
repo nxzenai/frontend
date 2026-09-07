@@ -184,11 +184,11 @@ export default function ChatWindow() {
       {chat.pendingConfirmation && <div className="flex items-center gap-3 border-t border-amber-500/20 bg-amber-500/10 px-5 py-3 text-sm text-amber-100"><AlertCircle size={16} /><span className="flex-1">{chat.pendingConfirmation.message}</span><button type="button" onClick={() => void chat.confirmTool()} className="rounded bg-amber-500 px-3 py-1.5 font-semibold text-slate-950">Confirm</button><button type="button" onClick={chat.dismissConfirmation} className="rounded border border-amber-400/40 px-3 py-1.5">Cancel</button></div>}
       {chat.error && <div className="border-t border-red-500/20 bg-red-500/10 px-5 py-2 text-sm text-red-300">{chat.error}</div>}
       <div className="border-t border-slate-700 p-4">
-        {chat.attachments.length > 0 && <div className="mx-auto mb-2 flex max-w-4xl flex-wrap gap-2">{chat.attachments.map(file => {
+        {chat.selectedAttachmentIds.length > 0 && <div className="mx-auto mb-2 flex max-w-4xl flex-wrap gap-2">{chat.attachments.filter(file => chat.selectedAttachmentIds.includes(file.id)).map(file => {
           const selected = chat.selectedAttachmentIds.includes(file.id);
           return <span key={file.id} className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs ${selected ? "border-pink-500 bg-pink-500/10 text-pink-100" : "border-slate-700 bg-slate-950 text-slate-400"}`}>
-            <button type="button" onClick={() => chat.toggleAttachment(file.id)} className="inline-flex items-center gap-1" title={selected ? "Selected for the next message" : "Select for the next message"}><FileText size={12} />{file.filename}{selected && <Check size={11} />}</button>
-            <button type="button" onClick={() => void chat.deleteAttachment(file.id)} className="ml-1 text-slate-500 hover:text-red-300" title="Delete attachment"><X size={12} /></button>
+            <span data-attachment-ready className="inline-flex items-center gap-1" title="Upload complete / ready"><FileText size={12} />{file.filename}<Check size={11} aria-hidden="true" /></span>
+            <button type="button" onClick={() => void chat.deleteAttachment(file.id)} className="ml-1 text-slate-500 hover:text-red-300" title="Remove attachment"><X size={12} /></button>
           </span>;
         })}</div>}
         <form onSubmit={submit} className="mx-auto flex max-w-4xl items-end gap-2 rounded-2xl border border-slate-700 bg-slate-950 p-2 focus-within:border-pink-500">
