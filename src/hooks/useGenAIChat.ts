@@ -27,68 +27,6 @@ type PendingResolution = ResolvedTool & {
   message?: string;
 };
 
-function resolveToolRequest(query: string, attachmentIds: string[]): ResolvedTool | null {
-  let tool = "";
-  if (/\b(python lab|inspect (?:my )?notebook|notebook cells?|run (?:this )?(?:python|cell)|execute (?:this )?(?:python|cell))\b/i.test(query)) tool = "python_lab";
-  else if (/\b(sql lab|database schema|run (?:this )?(?:sql|query)|execute (?:this )?(?:sql|query)|query (?:my|the) database)\b/i.test(query)) tool = "sql_lab";
-  else if (/\b(autonlp|natural language processing|text classification|sentiment(?: analysis)?|intent(?: classification)?|spam(?: classification)?)\b/i.test(query)) tool = "autonlp";
-  else if (/\b(autodl|deep learning|image classification|time[- ]series neural)\b/i.test(query)) tool = "autodl";
-  else if (/\b(automl|machine learning|clustering)\b/i.test(query)) tool = "automl";
-  else if (/\b(eda|exploratory data analysis|data quality|data profiling)\b/i.test(query)) tool = "eda";
-  if (!tool && (/\btrain\b/i.test(query) || (/\b(retrain|build|create|fit)\b/i.test(query) && /\bmodel\b/i.test(query)))) {
-    if (/\b(sentiment|intent|spam|text\s+classif)\b/i.test(query)) tool = "autonlp";
-    else if (/\b(deep learning|neural|image\s+classif\w*|time[- ]series|tabular\s+(?:classif\w*|regress\w*))\b/i.test(query)) tool = "autodl";
-    else if (/\b(churn|classif|regress|cluster|machine learning)\b/i.test(query)) tool = "automl";
-  }
-  if (!tool) return null;
-
-  const trainingIntent = /\b(train|retrain)\b/i.test(query)
-    || (/\b(build|create|fit)\b/i.test(query) && /\bmodel\b/i.test(query));
-  const predictionIntent = /\bpredict(?:ion)?\b/i.test(query);
-  if (trainingIntent && predictionIntent) {
-    return { tool, action: "ambiguous", attachmentIds, arguments: { action: "ambiguous" } };
-  }
-
-  const actionRules: Record<string, Array<[RegExp, string]>> = {
-    python_lab: [[/\b(execute|run)\b/i, "execute"], [/\b(inspect|notebook|cells?)\b/i, "inspect"], [/\bstatus\b/i, "status"], [/\bruntime\b/i, "runtime"]],
-    sql_lab: [[/\bschema\b/i, "schema"], [/\bstatistics\b/i, "statistics"], [/\b(execute|run|query|select|with|explain|insert|update|delete|create|alter|drop|truncate)\b/i, "query"]],
-    eda: [[/\btransform/i, "transform"], [/\breport\b/i, "report"], [/\bquality\b/i, "quality"], [/\bprofile\b/i, "profile"], [/\bpreview\b/i, "preview"], [/\boverview\b/i, "overview"], [/\b(upload|import)\b/i, "import"], [/\b(analy[sz]e|perform)\b/i, "analyze"], [/\blist\b/i, "list"]],
-    automl: [[/\bpredict\b/i, "predict"], [/\b(train|retrain|build|create|fit)\b/i, "train"], [/\bpreview\b/i, "preview"], [/\b(inspect|analy[sz]e)\b/i, "inspect"], [/\bmodel\b/i, "models"]],
-    autonlp: [[/\bpredict\b/i, "predict"], [/\b(train|retrain|build|create|fit)\b/i, "train"], [/\b(inspect|analy[sz]e)\b/i, "inspect"], [/\bmonitor/i, "monitoring"], [/\bmodel\b/i, "models"]],
-    autodl: [[/\bpredict\b/i, "predict"], [/\bresults?\b/i, "result"], [/\b(status|progress|ready|latest|last)\b/i, "status"], [/\bcancel\b/i, "cancel"], [/\b(train|retrain|build|create|fit)\b/i, "train"], [/\b(inspect|analy[sz]e)\b/i, "inspection"], [/\breadiness\b/i, "readiness"], [/\bmodel\b/i, "models"]],
-  };
-  const nlpPredictionIntent = tool === "autonlp" && !trainingIntent
-    && /\b(sentiment|intent|spam)\b/i.test(query)
-    && /\b(analy[sz]e|classif(?:y|ication)|predict)\b/i.test(query);
-  const action = nlpPredictionIntent
-    ? "predict"
-    : actionRules[tool]?.find(([pattern]) => pattern.test(query))?.[1];
-  if (!action) return null;
-  const args: Record<string, unknown> = {};
-  if (action) args.action = action;
-  if (attachmentIds.length === 1) args.attachment_id = attachmentIds[0];
-  for (const key of ["notebook_id", "cell_id", "project_id", "eda_id", "run_id", "model_id", "model_filename"] as const) {
-    const value = query.match(new RegExp(`\\b${key}\\s*[:=]\\s*([A-Za-z0-9._-]{1,200})`, "i"))?.[1];
-    if (value) args[key] = value;
-  }
-  for (const key of ["text_column", "target_column", "task", "confirmed_task", "confirmed_target", "confirmed_timestamp"] as const) {
-    const match = query.match(new RegExp(`\\b${key}\\s*[:=]\\s*(?:"([^"]+)"|'([^']+)'|([^,;\\s]+))`, "i"));
-    const value = match?.slice(1).find(Boolean);
-    if (value) args[key] = value;
-  }
-  const jsonBlock = query.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/i)?.[1];
-  if (jsonBlock) {
-    try { Object.assign(args, JSON.parse(jsonBlock) as Record<string, unknown>); } catch { /* backend returns a clear missing-input error */ }
-  }
-  if (tool === "sql_lab" && action === "query" && !args.query) {
-    const sql = query.match(/```(?:sql)?\s*([\s\S]*?)```/i)?.[1]?.trim();
-    const inline = query.match(/\b((?:select|with|explain|insert|update|delete|create|alter|drop|truncate)\b[\s\S]*)$/i)?.[1]?.trim();
-    if (sql || inline) args.query = sql || inline;
-  }
-  return { tool, action, attachmentIds, arguments: args };
-}
-
-
 export default function useGenAIChat() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -156,7 +94,7 @@ export default function useGenAIChat() {
       attachmentIds: confirmation.attachment_ids ?? [], arguments: confirmation.arguments ?? {},
       query: pending?.original_action ?? "Continue confirmed action",
       confirmationId: confirmation.id,
-      message: `Confirm before allowing ${confirmation.tool.replaceAll("_", " ")} to continue.`,
+      message: confirmation.message ?? `Confirm before allowing ${confirmation.tool.replaceAll("_", " ")} to continue.`,
     } : null);
   }, [isLoading]);
 
@@ -183,6 +121,7 @@ export default function useGenAIChat() {
     controllerRef.current = controller;
     let streamedError: string | null = null;
     let completed = false;
+    let preserveSelectedAttachments = false;
     const continuationAttachments = pendingResolution && selectedAttachmentIds.length > 0
       ? selectedAttachmentIds : pendingResolution?.attachmentIds ?? [];
     const continuationArguments: Record<string, unknown> = pendingResolution ? { ...pendingResolution.arguments } : {};
@@ -195,7 +134,10 @@ export default function useGenAIChat() {
       attachmentIds: continuationAttachments,
       arguments: continuationArguments,
     } : null;
-    const resolved = resolvedOverride ?? continuation ?? resolveToolRequest(query, selectedAttachmentIds);
+    // The backend is the sole authority for initial intent/lab routing.  The
+    // frontend supplies a tool only for a server-issued continuation or an
+    // explicit resource-selection callback.
+    const resolved = resolvedOverride ?? continuation;
     const messageAttachmentIds = resolved?.attachmentIds ?? selectedAttachmentIds;
     if (continuation) setPendingResolution(null);
     try {
@@ -224,6 +166,7 @@ export default function useGenAIChat() {
             ? { ...message, content: message.content + event.content } : message));
         } else if (event.type === "done" && event.message) {
           completed = true;
+          preserveSelectedAttachments = event.message.metadata?.handled_by === "native_training";
           setPendingResolution(null);
           setPendingConfirmation(null);
           setMessages(current => current.map(message => message.id === temporaryAssistantId ? event.message! : message));
@@ -253,7 +196,7 @@ export default function useGenAIChat() {
       }
     } finally {
       controllerRef.current = null; generationRef.current = null; setIsLoading(false);
-      if (completed) setSelectedAttachmentIds([]);
+      if (completed && !preserveSelectedAttachments) setSelectedAttachmentIds([]);
       setMessages(current => current.filter(message => message.id !== temporaryAssistantId || message.content));
     }
   }, [activeConversationId, activeProjectId, isLoading, pendingResolution, reasoning, refreshConversations, selectedAttachmentIds, tier]);

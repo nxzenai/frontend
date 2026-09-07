@@ -29,9 +29,12 @@ export interface ConversationDetail extends ConversationSummary {
   } | null;
   pending_confirmation?: {
     id: string; tool: string; action?: string; attachment_ids?: string[];
-    arguments?: Record<string, unknown>;
+    arguments?: Record<string, unknown>; message?: string;
   } | null;
-  active_lab_resources?: Record<string, { run_id?: string; status?: string; task?: string }>;
+  active_lab_resources?: Record<string, {
+    tool?: string; run_id?: string; model_id?: string; model_filename?: string;
+    status?: string; task?: string; target_column?: string; text_column?: string;
+  }>;
 }
 
 export interface ChatRequest {
