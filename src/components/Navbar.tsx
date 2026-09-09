@@ -1,179 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
+import { Menu, X } from "lucide-react";
 
 const navigation = [
-  { name: "Home", href: "/" },
-  { name: "AI Training", href: "/programs" },
-  { name: "Curriculum", href: "/curriculum" },
-  { name: "Industry Solutions", href: "/projects" },
-  { name: "Demo", href: "/demo" },
-  { name: "Contact", href: "/contact" },
-];
+  ["Home", "/"], ["Platform", "/platform"], ["Solutions", "/solutions"],
+  ["Training", "/training"], ["Industries", "/industries"], ["Contact", "/contact"],
+] as const;
 
 export default function Navbar() {
-  const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-800/70 bg-slate-950/85 backdrop-blur-xl">
-      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
-
-        {/* =====================================================
-            LOGO
-        ====================================================== */}
-        <Link
-          href="/"
-          className="text-2xl font-bold tracking-wide text-white transition hover:text-blue-400 md:text-3xl lg:text-4xl"
-        >
-          NxZenAI
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-white/[.07] bg-[#050814]/85 backdrop-blur-xl">
+      <div className="mx-auto flex h-[66px] w-full max-w-7xl items-center gap-5 px-5 md:h-[76px] md:px-8">
+        <Link href="/" aria-label="NxZenAI home" className="focus-visible:rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cyan-300">
+          <Image src="/nxzenai-navbar-logo-v2.png" width={2172} height={724} priority alt="NxZenAI" className="h-[42px] w-[140px] shrink-0 object-contain object-left md:h-[46px] md:w-[170px]" />
         </Link>
-
-        {/* =====================================================
-            DESKTOP NAVIGATION
-        ====================================================== */}
-        <nav className="hidden items-center gap-8 lg:flex">
-          {navigation.map((item) => {
-            const active = pathname === item.href;
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`font-medium transition ${
-                  active
-                    ? "text-blue-400"
-                    : "text-slate-300 hover:text-white"
-                }`}
-              >
-                {item.name}
-              </Link>
-            );
-          })}
+        <nav aria-label="Main navigation" className="ml-auto hidden items-center gap-6 xl:flex">
+          {navigation.map(([label, href]) => <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined} className={`text-sm font-medium transition-colors duration-200 hover:text-cyan-100 ${pathname === href ? "text-cyan-300" : "text-slate-300"}`}>{label}</Link>)}
         </nav>
-
-        {/* =====================================================
-            DESKTOP CTA BUTTONS
-        ====================================================== */}
-        <div className="hidden items-center gap-4 md:flex">
-
-          {/* Consultation */}
-          <Link
-            href="/contact"
-            className="rounded-xl border border-slate-700 px-5 py-3 font-semibold text-white transition hover:border-blue-500 hover:bg-slate-900"
-          >
-            AI Consultation
-          </Link>
-
-          {/* AI Studio */}
-          <Link
-            href="/login"
-            className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700"
-          >
-            AI Studio
-          </Link>
-
+        <div className="hidden items-center gap-2.5 xl:flex">
+          <Link href="/contact" className="rounded-[9px] bg-cyan-300 px-4 py-2.5 text-sm font-bold text-slate-950 transition-colors hover:bg-cyan-200">Book Consultation</Link>
+          <Link href="/login" className="rounded-[9px] border border-white/15 px-4 py-2.5 text-sm font-semibold text-slate-100 transition-colors hover:border-cyan-300/50 hover:text-cyan-100">Explore AI Studio</Link>
         </div>
-
-        {/* =====================================================
-            MOBILE MENU TOGGLE
-        ====================================================== */}
-        <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle navigation"
-          aria-expanded={mobileOpen}
-          className="rounded-lg border border-slate-700 p-2 text-white transition hover:bg-slate-800 lg:hidden"
-        >
-          {mobileOpen ? (
-            /* Close Icon */
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          ) : (
-            /* Menu Icon */
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
-          )}
-        </button>
+        <button type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} aria-controls="marketing-mobile-nav" aria-label={open ? "Close navigation" : "Open navigation"} className="ml-auto rounded-lg border border-white/10 p-2 text-slate-100 transition-colors hover:border-cyan-300/50 xl:hidden">{open ? <X size={21} /> : <Menu size={21} />}</button>
       </div>
-
-      {/* =====================================================
-          MOBILE MENU
-      ====================================================== */}
-      <div
-        className={`overflow-hidden border-t border-slate-800 bg-slate-950 transition-all duration-300 lg:hidden ${
-          mobileOpen ? "max-h-[600px]" : "max-h-0"
-        }`}
-      >
-        <nav className="flex flex-col px-6 py-5">
-
-          {/* Mobile Navigation Links */}
-          {navigation.map((item) => {
-            const active = pathname === item.href;
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileOpen(false)}
-                className={`rounded-lg px-4 py-3 transition ${
-                  active
-                    ? "bg-blue-600 text-white"
-                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                }`}
-              >
-                {item.name}
-              </Link>
-            );
-          })}
-
-          {/* =================================================
-              MOBILE CONSULTATION
-          ================================================== */}
-          <Link
-            href="/contact"
-            onClick={() => setMobileOpen(false)}
-            className="mt-5 rounded-xl border border-slate-700 px-4 py-3 text-center font-semibold text-white transition hover:border-blue-500 hover:bg-slate-900"
-          >
-            AI Consultation
-          </Link>
-
-          {/* =================================================
-              MOBILE AI STUDIO
-          ================================================== */}
-          <Link
-            href="/login"
-            onClick={() => setMobileOpen(false)}
-            className="mt-3 rounded-xl bg-blue-600 px-4 py-3 text-center font-semibold text-white transition hover:bg-blue-700"
-          >
-            AI Studio
-          </Link>
-
+      <div id="marketing-mobile-nav" hidden={!open} className="border-t border-white/[.07] bg-[#070b16] xl:hidden">
+        <nav aria-label="Mobile navigation" className="mx-auto grid w-full max-w-7xl gap-1 px-5 py-4 md:px-8">
+          {navigation.map(([label, href]) => <Link key={href} href={href} onClick={() => setOpen(false)} aria-current={pathname === href ? "page" : undefined} className={`rounded-lg px-4 py-3 text-sm font-medium ${pathname === href ? "bg-cyan-300/10 text-cyan-200" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}>{label}</Link>)}
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:max-w-md sm:grid-cols-2"><Link href="/contact" onClick={() => setOpen(false)} className="rounded-lg bg-cyan-300 px-3 py-3 text-center text-sm font-bold text-slate-950">Book Consultation</Link><Link href="/login" onClick={() => setOpen(false)} className="rounded-lg border border-white/15 px-3 py-3 text-center text-sm font-semibold text-white">Explore AI Studio</Link></div>
         </nav>
       </div>
     </header>

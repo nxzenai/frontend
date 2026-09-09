@@ -34,15 +34,13 @@ export default function AuthLayout({
 
           <div className="mb-8 inline-flex rounded-full border border-blue-500/30 bg-blue-500/10 px-5 py-2 text-sm font-semibold text-blue-300">
 
-            NxZen AI
+            NxZenAI
 
           </div>
 
           <h1 className="mb-8 text-6xl font-black leading-tight text-white">
 
-            NxZen
-            <br />
-            AI Studio
+            NxZenAI Studio
 
           </h1>
 
