@@ -98,11 +98,10 @@ export const NAVIGATION: NavigationItem[] = [
 
   {
     title: "Agentic AI",
-    href: "#",
+    href: "/agentic",
     icon: Bot,
     permission: "agentic_ai",
     section: "labs",
-    comingSoon: true,
   },
 
   {
