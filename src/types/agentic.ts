@@ -131,3 +131,54 @@ export interface GeneratedFile {
   content: string;
   created_at: string;
 }
+
+export type AgenticBuildStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
+
+export type AgenticBuildStage =
+  | "queued"
+  | "preparing"
+  | "validating_source"
+  | "creating_sandbox"
+  | "installing_backend_dependencies"
+  | "validating_backend"
+  | "running_backend_tests"
+  | "installing_frontend_dependencies"
+  | "building_frontend"
+  | "finalizing"
+  | "completed";
+
+export type AgenticBuildCheck = "pending" | "passed" | "failed" | "absent" | "not_required";
+
+export interface AgenticBuildResult {
+  backend_validation: AgenticBuildCheck;
+  backend_tests: AgenticBuildCheck;
+  frontend_build: AgenticBuildCheck;
+  package_validation: AgenticBuildCheck;
+  duration_ms: number;
+  log_summary: string;
+}
+
+export interface AgenticBuild {
+  id: string;
+  project_id: string;
+  version_id: string;
+  status: AgenticBuildStatus;
+  stage: AgenticBuildStage;
+  attempt: number;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  cancel_requested: boolean;
+  error: string | null;
+  result: AgenticBuildResult;
+}
+
+export interface AgenticBuildEvent {
+  id: string;
+  build_id: string;
+  sequence: number;
+  type: string;
+  stage: AgenticBuildStage;
+  message: string;
+  created_at: string;
+}

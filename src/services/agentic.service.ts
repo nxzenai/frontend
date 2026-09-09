@@ -6,6 +6,8 @@ import type {
   AgenticVersion,
   GeneratedFile,
   SourceTreeNode,
+  AgenticBuild,
+  AgenticBuildEvent,
 } from "@/types/agentic";
 
 class AgenticService {
@@ -96,6 +98,40 @@ class AgenticService {
     anchor.click();
     anchor.remove();
     URL.revokeObjectURL(url);
+  }
+
+  async createBuild(projectId: string, versionId: string): Promise<AgenticBuild> {
+    return (
+      await api.post<AgenticBuild>(
+        `/agentic/projects/${projectId}/versions/${versionId}/builds`,
+      )
+    ).data;
+  }
+
+  async builds(projectId: string): Promise<AgenticBuild[]> {
+    return (await api.get<AgenticBuild[]>(`/agentic/projects/${projectId}/builds`)).data;
+  }
+
+  async build(projectId: string, buildId: string): Promise<AgenticBuild> {
+    return (
+      await api.get<AgenticBuild>(`/agentic/projects/${projectId}/builds/${buildId}`)
+    ).data;
+  }
+
+  async buildEvents(projectId: string, buildId: string): Promise<AgenticBuildEvent[]> {
+    return (
+      await api.get<AgenticBuildEvent[]>(
+        `/agentic/projects/${projectId}/builds/${buildId}/events`,
+      )
+    ).data;
+  }
+
+  async cancelBuild(projectId: string, buildId: string): Promise<AgenticBuild> {
+    return (
+      await api.post<AgenticBuild>(
+        `/agentic/projects/${projectId}/builds/${buildId}/cancel`,
+      )
+    ).data;
   }
 }
 

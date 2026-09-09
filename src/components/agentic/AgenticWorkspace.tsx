@@ -7,6 +7,7 @@ import GenerationProgress from "./GenerationProgress";
 import PlanningProgress from "./PlanningProgress";
 import SourceBrowser from "./SourceBrowser";
 import VersionHistory from "./VersionHistory";
+import BuildPanel from "./BuildPanel";
 import agenticService from "@/services/agentic.service";
 import type { AgenticPlan, AgenticProject, AgenticVersion } from "@/types/agentic";
 
@@ -17,7 +18,7 @@ interface Props {
   onProjectChanged: (project: AgenticProject) => void;
 }
 
-type WorkspaceTab = "overview" | "architecture" | "source" | "versions";
+type WorkspaceTab = "overview" | "architecture" | "source" | "versions" | "build";
 
 function errorMessage(error: unknown): string {
   const candidate = error as { response?: { data?: { detail?: { message?: string } } }; message?: string };
@@ -132,6 +133,7 @@ export default function AgenticWorkspace({ project, initialPlan, onBack, onProje
     { id: "architecture", label: "Architecture" },
     ...(readyVersions.length ? [{ id: "source" as const, label: "Source" }] : []),
     ...(versions.length ? [{ id: "versions" as const, label: "Versions" }] : []),
+    ...(readyVersions.length ? [{ id: "build" as const, label: "Build" }] : []),
   ];
 
   return (
@@ -168,6 +170,7 @@ export default function AgenticWorkspace({ project, initialPlan, onBack, onProje
       {tab === "architecture" && <ArchitecturePlan plan={plan} />}
       {tab === "source" && selectedVersion && <SourceBrowser key={selectedVersion.id} projectId={project.id} version={selectedVersion} />}
       {tab === "versions" && <VersionHistory projectId={project.id} versions={versions} currentVersionId={project.current_version_id} onBrowse={browse} />}
+      {tab === "build" && selectedVersion && <BuildPanel key={selectedVersion.id} projectId={project.id} version={selectedVersion} />}
 
       {tab === "architecture" && showChanges && (
         <div className="mt-5 rounded-2xl border border-cyan-500/30 bg-slate-900 p-6">
