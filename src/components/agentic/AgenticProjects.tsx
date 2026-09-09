@@ -15,6 +15,7 @@ function errorMessage(error: unknown): string {
 
 const statusLabel: Record<AgenticProject["status"], string> = {
   draft: "Draft", planning: "Planning", plan_ready: "Plan ready", approved: "Approved", planning_failed: "Planning failed",
+  generating: "Generating", generated: "Generated", generation_failed: "Generation failed",
 };
 
 export default function AgenticProjects() {
@@ -116,7 +117,7 @@ export default function AgenticProjects() {
       {busy ? <div className="mt-12 text-center text-sm text-slate-500">Loading Agentic projects...</div> : projects.length === 0 ? (
         <div className="mt-12 flex min-h-80 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 text-center"><div className="rounded-2xl bg-cyan-500/10 p-4 text-cyan-400"><Bot className="h-8 w-8" /></div><h2 className="mt-5 text-lg font-semibold text-white">Design your first AI solution</h2><p className="mt-2 max-w-md text-sm text-slate-400">Start with the business problem. NxZenAI will create a structured architecture for your review.</p></div>
       ) : (
-        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{projects.map(project => <button key={project.id} onClick={() => void openProject(project)} className="group rounded-2xl border border-slate-800 bg-slate-900/70 p-5 text-left transition hover:-translate-y-0.5 hover:border-cyan-500/40"><div className="flex items-start justify-between"><span className="rounded-xl bg-cyan-500/10 p-3 text-cyan-400"><Bot className="h-5 w-5" /></span><span className={`rounded-full px-2.5 py-1 text-xs ${project.status === "approved" ? "bg-emerald-500/15 text-emerald-300" : project.status === "planning_failed" ? "bg-red-500/15 text-red-300" : "bg-slate-800 text-slate-300"}`}>{statusLabel[project.status]}</span></div><h2 className="mt-5 font-semibold text-white">{project.name}</h2><p className="mt-2 text-xs text-slate-500">Updated {new Date(project.updated_at).toLocaleString()}</p><span className="mt-5 flex items-center gap-1 text-xs font-medium text-cyan-400">Open architecture <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" /></span></button>)}</div>
+        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{projects.map(project => <button key={project.id} onClick={() => void openProject(project)} className="group rounded-2xl border border-slate-800 bg-slate-900/70 p-5 text-left transition hover:-translate-y-0.5 hover:border-cyan-500/40"><div className="flex items-start justify-between"><span className="rounded-xl bg-cyan-500/10 p-3 text-cyan-400"><Bot className="h-5 w-5" /></span><span className={`rounded-full px-2.5 py-1 text-xs ${project.status === "approved" || project.status === "generated" ? "bg-emerald-500/15 text-emerald-300" : project.status === "planning_failed" || project.status === "generation_failed" ? "bg-red-500/15 text-red-300" : "bg-slate-800 text-slate-300"}`}>{statusLabel[project.status]}</span></div><h2 className="mt-5 font-semibold text-white">{project.name}</h2><p className="mt-2 text-xs text-slate-500">Updated {new Date(project.updated_at).toLocaleString()}</p><span className="mt-5 flex items-center gap-1 text-xs font-medium text-cyan-400">Open workspace <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" /></span></button>)}</div>
       )}
     </div>
   );

@@ -3,6 +3,9 @@ import type {
   AgenticPlan,
   AgenticProject,
   AgenticProjectInput,
+  AgenticVersion,
+  GeneratedFile,
+  SourceTreeNode,
 } from "@/types/agentic";
 
 class AgenticService {
@@ -46,6 +49,53 @@ class AgenticService {
     return (
       await api.post<{ id: string; filename: string }>("/genai/attachments", body)
     ).data;
+  }
+
+  async generateApplication(projectId: string): Promise<AgenticVersion> {
+    return (
+      await api.post<AgenticVersion>(`/agentic/projects/${projectId}/generate`)
+    ).data;
+  }
+
+  async versions(projectId: string): Promise<AgenticVersion[]> {
+    return (
+      await api.get<AgenticVersion[]>(`/agentic/projects/${projectId}/versions`)
+    ).data;
+  }
+
+  async sourceTree(projectId: string, versionId: string): Promise<SourceTreeNode[]> {
+    return (
+      await api.get<SourceTreeNode[]>(
+        `/agentic/projects/${projectId}/versions/${versionId}/tree`,
+      )
+    ).data;
+  }
+
+  async sourceFile(projectId: string, versionId: string, path: string): Promise<GeneratedFile> {
+    return (
+      await api.get<GeneratedFile>(
+        `/agentic/projects/${projectId}/versions/${versionId}/file`,
+        { params: { path } },
+      )
+    ).data;
+  }
+
+  async downloadSource(projectId: string, version: AgenticVersion): Promise<void> {
+    const response = await api.get<Blob>(
+      `/agentic/projects/${projectId}/versions/${version.id}/download`,
+      { responseType: "blob" },
+    );
+    const disposition = String(response.headers["content-disposition"] ?? "");
+    const matched = disposition.match(/filename="([^"]+)"/);
+    const filename = matched?.[1] ?? `agentic-application-v${version.version_number}.zip`;
+    const url = URL.createObjectURL(response.data);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
   }
 }
 
