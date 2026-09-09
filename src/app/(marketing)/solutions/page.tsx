@@ -1,0 +1,20 @@
+import type { Metadata } from "next";
+import { BarChart3, Bot, BrainCircuit, BriefcaseBusiness, Braces, Layers3, Network, Orbit, Sparkles, Workflow } from "lucide-react";
+import { CtaBand, FeatureCard, PageHero, SectionHeading } from "@/components/marketing/MarketingPrimitives";
+
+export const metadata: Metadata = { title: "AI Solutions", description: "Business-focused AI consulting, automation, machine learning, generative AI, analytics, and transformation services from NxZenAI." };
+const solutions = [
+  [Workflow,"AI Automation","Improve productivity by applying intelligent automation to repeatable, high-value workflows."],
+  [Sparkles,"Generative AI","Design grounded assistants, knowledge systems, and content experiences using modern GenAI patterns."],
+  [BrainCircuit,"Machine Learning","Turn structured business data into predictive signals and decision-support systems."],
+  [Braces,"Natural Language Processing","Apply text classification, sentiment, extraction, and language intelligence to business content."],
+  [Orbit,"Deep Learning","Explore supported deep-learning approaches for image, sequence, and complex prediction problems."],
+  [BarChart3,"Data Analytics","Transform raw data into clear analysis, operational insight, and measurable decision support."],
+  [Bot,"Agentic AI","Design governed agents that coordinate tools, knowledge, and human checkpoints."],
+  [BriefcaseBusiness,"AI Consulting","Prioritize realistic use cases, shape roadmaps, and validate technical and business fit."],
+  [Network,"Enterprise AI Transformation","Build capability across strategy, people, platforms, governance, and delivery."],
+] as const;
+export default function SolutionsPage() { return <main><PageHero eyebrow="AI solutions & consulting" title="Turn AI opportunity into" accent="practical business value." description="NxZenAI helps organizations discover, validate, and deliver focused AI solutions while developing the capabilities needed to sustain them." />
+  <section className="mk-section mk-section-alt"><div className="mk-container"><SectionHeading kicker="What we help build" title="Solutions designed around real workflows." description="Engagements stay grounded in available data, operating needs, responsible implementation, and clear human ownership." /><div className="mk-card-grid">{solutions.map(([Icon,title,description]) => <FeatureCard key={title} icon={Icon} title={title} description={description} />)}</div></div></section>
+  <section className="mk-section"><div className="mk-container"><SectionHeading kicker="How we work" title="Focused from discovery to adoption." description="A practical engagement model keeps technical delivery connected to business goals and team readiness." /><div className="mk-process">{[["01","Discover","Frame the workflow, data, users, constraints, and desired outcome."],["02","Validate","Test feasibility with focused analysis, prototypes, or proof of concept."],["03","Deliver","Build the solution using appropriate, maintainable AI approaches."],["04","Enable","Support adoption with training, operating guidance, and iteration."]].map(([n,title,text]) => <article key={n}><span>{n}</span><h3>{title}</h3><p>{text}</p></article>)}</div></div></section>
+  <section className="mk-section mk-section-alt"><div className="mk-container grid gap-10 lg:grid-cols-2"><div><p className="mk-kicker">Enterprise AI</p><h2 className="mt-4 text-4xl font-semibold tracking-[-.05em] md:text-6xl">Build organizational capability, not isolated demos.</h2></div><div className="grid gap-4 text-slate-300">{["Opportunity and readiness assessment","Responsible AI and governance guidance","Corporate AI training and enablement","Proof-of-concept and solution delivery","Adoption roadmap and operating model"].map(item => <div key={item} className="flex items-center gap-3 border-b border-white/[.08] py-4"><Layers3 size={17} className="text-cyan-300" />{item}</div>)}</div></div></section><CtaBand title="Let’s shape your practical AI roadmap." /></main>; }

@@ -14,12 +14,12 @@ export default function DashboardLayout({
     <div className="flex h-screen bg-slate-950 overflow-hidden">
 
       {/* Sidebar */}
-      <aside className="w-72 flex-shrink-0 border-r border-slate-800">
+      <aside className="w-72 flex-shrink-0">
         <Sidebar />
       </aside>
 
       {/* Right Section */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
 
         <Navbar />
 

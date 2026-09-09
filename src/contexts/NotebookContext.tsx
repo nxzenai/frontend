@@ -1,12 +1,15 @@
 "use client";
 
 import {
+  useCallback,
   createContext,
   useContext,
   useEffect,
   useState,
 } from "react";
+import { usePathname } from "next/navigation";
 
+import { shouldLoadNotebookCatalog } from "@/lib/notebookRoute";
 import AuthService from "@/services/auth.service";
 import NotebookService from "@/services/notebook.service";
 
@@ -41,23 +44,26 @@ export function NotebookProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const loadNotebookCatalog = shouldLoadNotebookCatalog(pathname);
+
   const [notebooks, setNotebooks] =
     useState<Notebook[]>([]);
 
   const [loading, setLoading] =
-    useState(true);
+    useState(false);
 
   //////////////////////////////////////////////////////
   // Refresh Notebooks
   //////////////////////////////////////////////////////
 
-  async function refresh() {
-    // Do not call backend if user is not logged in
-    if (!AuthService.isAuthenticated()) {
-      setLoading(false);
+  const refresh = useCallback(async () => {
+    // The catalog is consumed by Dashboard only. Public routes must not fetch it.
+    if (!loadNotebookCatalog || !AuthService.isAuthenticated()) {
       return;
     }
 
+    await Promise.resolve();
     setLoading(true);
 
     try {
@@ -65,17 +71,18 @@ export function NotebookProvider({
         await NotebookService.getAll();
 
       setNotebooks(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Ignore expired token errors.
+      const status = (err as { response?: { status?: number } })?.response?.status;
       if (
-        err?.response?.status !== 401
+        status !== 401
       ) {
         console.error(err);
       }
     } finally {
       setLoading(false);
     }
-  }
+  }, [loadNotebookCatalog]);
 
   //////////////////////////////////////////////////////
   // Create Notebook
@@ -106,8 +113,10 @@ export function NotebookProvider({
   //////////////////////////////////////////////////////
 
   useEffect(() => {
-    refresh();
-  }, []);
+    if (!loadNotebookCatalog) return;
+    const refreshTimer = window.setTimeout(() => void refresh(), 0);
+    return () => window.clearTimeout(refreshTimer);
+  }, [loadNotebookCatalog, refresh]);
 
   //////////////////////////////////////////////////////
   // Provider

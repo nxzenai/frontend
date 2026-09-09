@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -72,14 +73,20 @@ export default function Sidebar() {
     <aside className="flex h-screen w-72 flex-col border-r border-slate-800 bg-[#020617]">
       {/* Logo */}
 
-      <div className="border-b border-slate-800 px-6 py-6">
-        <h1 className="text-2xl font-bold text-white">
-          NxZen AI Studio
-        </h1>
-
-        <p className="mt-1 text-sm text-slate-400">
-          Enterprise AI Platform
-        </p>
+      <div className="flex h-24 shrink-0 items-center border-b border-slate-800 px-6">
+        <div>
+          <Image
+            src="/nxzenai-navbar-logo-v2.png"
+            width={2172}
+            height={724}
+            priority
+            alt="NxZenAI"
+            className="h-[44px] w-[160px] object-contain object-left"
+          />
+          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+            AI Studio
+          </p>
+        </div>
       </div>
 
       {/* Navigation */}
@@ -195,11 +202,7 @@ export default function Sidebar() {
         {/* Version */}
 
         <div className="mt-4 text-center">
-          <p className="text-xs text-slate-500">
-            NxZen AI Studio
-          </p>
-
-          <p className="mt-1 text-xs text-slate-600">
+          <p className="text-xs text-slate-600">
             Enterprise Edition • v1.0.0
           </p>
         </div>

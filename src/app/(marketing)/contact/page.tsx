@@ -1,230 +1,55 @@
-"use client";
+import type { Metadata } from "next";
+import { Building2, GraduationCap, Mail, Phone, Sparkles, Users } from "lucide-react";
+import ContactForm from "@/components/marketing/ContactForm";
+import { FeatureCard, PageHero } from "@/components/marketing/MarketingPrimitives";
 
-import Link from "next/link";
+export const metadata: Metadata = {
+  title: "Contact",
+  description: "Talk with NxZenAI about AI training, NxZenAI Studio, consulting, and enterprise AI solutions.",
+};
+
+const audiences = [
+  { icon: GraduationCap, title: "Learners", description: "Choose a practical pathway into AI, machine learning, GenAI, and agentic systems." },
+  { icon: Users, title: "Teams", description: "Build role-relevant AI capability with hands-on corporate and university programs." },
+  { icon: Building2, title: "Organizations", description: "Explore AI strategy, automation, prototypes, and responsible enterprise adoption." },
+];
 
 export default function ContactPage() {
   return (
-    <main className="min-h-screen py-20 px-6">
+    <main>
+      <PageHero
+        eyebrow="Start a conversation"
+        title="Make your next AI move"
+        accent="practical."
+        description="Tell us what you want to learn, build, or transform. Our team will help you identify the right next step."
+      />
 
-      <div className="max-w-6xl mx-auto">
-
-        {/* Hero */}
-        <div className="text-center mb-16">
-
-          <h1 className="text-5xl md:text-6xl font-bold mb-6">
-            Let's Connect
-          </h1>
-
-          <p className="text-slate-400 text-xl max-w-3xl mx-auto">
-            Whether you're exploring AI for your business,
-            building AI capabilities within your organization,
-            or advancing your own AI skills, we're here to help.
-          </p>
-
+      <section className="mk-section mk-section-alt">
+        <div className="mk-container mk-contact-layout">
+          <div>
+            <p className="mk-kicker">Contact NxZenAI</p>
+            <h2 className="mt-4 text-4xl font-semibold tracking-[-.04em] md:text-5xl">Let&apos;s explore what AI can do for you.</h2>
+            <p className="mt-5 max-w-xl leading-7 text-slate-400">For training guidance, AI Studio access, or an enterprise consultation, share a little context and we will connect you with the right team.</p>
+            <div className="mt-9 grid gap-3 sm:grid-cols-2">
+              <a className="mk-contact-detail" href="mailto:bhargav@nxzenai.com"><Mail size={18} /><span><small>Email</small>bhargav@nxzenai.com</span></a>
+              <a className="mk-contact-detail" href="tel:+919949614407"><Phone size={18} /><span><small>Mobile</small>+91 99496 14407</span></a>
+            </div>
+            <div className="mt-9 rounded-2xl border border-cyan-300/15 bg-cyan-300/[.04] p-5 text-sm leading-6 text-slate-400">
+              <Sparkles className="mb-3 text-cyan-300" size={19} />
+              Expect a practical conversation focused on your goals, readiness, and the most useful next step.
+            </div>
+          </div>
+          <ContactForm />
         </div>
+      </section>
 
-        {/* Contact Cards */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
-
-          <div className="bg-slate-950 border border-slate-800 rounded-3xl p-8 text-center">
-
-            <div className="text-4xl mb-4">
-              📧
-            </div>
-
-            <h3 className="text-xl font-semibold mb-3">
-              Email
-            </h3>
-
-            <p className="text-slate-400">
-              info@nextgenai.in
-            </p>
-
+      <section className="mk-section">
+        <div className="mk-container">
+          <div className="mk-card-grid mk-three">
+            {audiences.map(({ icon, title, description }) => <FeatureCard key={title} icon={icon} title={title} description={description} />)}
           </div>
-
-          <div className="bg-slate-950 border border-slate-800 rounded-3xl p-8 text-center">
-
-            <div className="text-4xl mb-4">
-              📱
-            </div>
-
-            <h3 className="text-xl font-semibold mb-3">
-              Phone
-            </h3>
-
-            <p className="text-slate-400">
-              +91 99496 14407
-            </p>
-
-          </div>
-
-          <div className="bg-slate-950 border border-slate-800 rounded-3xl p-8 text-center">
-
-            <div className="text-4xl mb-4">
-              🤝
-            </div>
-
-            <h3 className="text-xl font-semibold mb-3">
-              Consultation
-            </h3>
-
-            <p className="text-slate-400">
-              AI Solutions, Training & Program Guidance
-            </p>
-
-          </div>
-
         </div>
-
-        {/* Who We Work With */}
-        <div className="bg-slate-950 border border-slate-800 rounded-3xl p-10 mb-16">
-
-          <h2 className="text-3xl font-bold text-center mb-10">
-            Who We Work With
-          </h2>
-
-          <div className="grid md:grid-cols-4 gap-6 text-center">
-
-            <div className="border border-slate-800 rounded-2xl p-6">
-              🎓
-              <p className="mt-3">
-                Students
-              </p>
-            </div>
-
-            <div className="border border-slate-800 rounded-2xl p-6">
-              💼
-              <p className="mt-3">
-                Professionals
-              </p>
-            </div>
-
-            <div className="border border-slate-800 rounded-2xl p-6">
-              🚀
-              <p className="mt-3">
-                Startups & Entrepreneurs
-              </p>
-            </div>
-
-            <div className="border border-slate-800 rounded-2xl p-6">
-              🏢
-              <p className="mt-3">
-                Organizations
-              </p>
-            </div>
-
-          </div>
-
-        </div>
-
-        {/* Services */}
-        <div className="bg-slate-950 border border-slate-800 rounded-3xl p-10 mb-16">
-
-          <h2 className="text-3xl font-bold text-center mb-10">
-            How We Can Help
-          </h2>
-
-          <div className="grid md:grid-cols-2 gap-6">
-
-            <div className="border border-slate-800 rounded-2xl p-6">
-              <h3 className="font-semibold mb-2">
-                AI Consultancy & Solutions
-              </h3>
-
-              <p className="text-slate-400 text-sm">
-                AI strategy, custom solutions, Generative AI,
-                automation and machine learning.
-              </p>
-            </div>
-
-            <div className="border border-slate-800 rounded-2xl p-6">
-              <h3 className="font-semibold mb-2">
-                AI Training Programs
-              </h3>
-
-              <p className="text-slate-400 text-sm">
-                Structured AI learning pathways for students
-                and working professionals.
-              </p>
-            </div>
-
-            <div className="border border-slate-800 rounded-2xl p-6">
-              <h3 className="font-semibold mb-2">
-                Corporate AI Training
-              </h3>
-
-              <p className="text-slate-400 text-sm">
-                Practical AI enablement and upskilling programs
-                for teams and organizations.
-              </p>
-            </div>
-
-            <div className="border border-slate-800 rounded-2xl p-6">
-              <h3 className="font-semibold mb-2">
-                NxZenAI Studio
-              </h3>
-
-              <p className="text-slate-400 text-sm">
-                Hands-on AI experimentation, development
-                and learning through the NxZenAI platform.
-              </p>
-            </div>
-
-          </div>
-
-        </div>
-
-        {/* CTA */}
-        <div className="text-center">
-
-          <h2 className="text-4xl font-bold mb-4">
-            Ready to Get Started?
-          </h2>
-
-          <p className="text-slate-400 mb-8 max-w-2xl mx-auto">
-            Talk with our team about your AI project,
-            organizational training requirements or
-            professional learning goals.
-          </p>
-
-          <div className="flex flex-col md:flex-row justify-center gap-4">
-
-            <Link
-              href="/demo"
-              className="
-                bg-blue-600
-                hover:bg-blue-700
-                px-8
-                py-4
-                rounded-xl
-                font-semibold
-                transition
-              "
-            >
-              Schedule a Consultation
-            </Link>
-
-            <Link
-              href="/programs"
-              className="
-                border
-                border-slate-700
-                px-8
-                py-4
-                rounded-xl
-                hover:bg-slate-900
-                transition
-              "
-            >
-              Explore Training Programs
-            </Link>
-
-          </div>
-
-        </div>
-
-      </div>
-
+      </section>
     </main>
   );
 }
