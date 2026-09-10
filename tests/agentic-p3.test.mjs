@@ -37,9 +37,7 @@ test("failure, bounded logs, and cancellation controls are rendered", () => {
   assert.match(panel, /agenticService\.cancelBuild/);
 });
 
-test("P3 introduces no live preview functionality", () => {
-  const workspace = source("src/components/agentic/AgenticWorkspace.tsx");
+test("P3 build controls remain separate from preview lifecycle", () => {
   const panel = source("src/components/agentic/BuildPanel.tsx");
-  const service = source("src/services/agentic.service.ts");
-  assert.doesNotMatch(`${workspace}\n${panel}\n${service}`, /preview/i);
+  assert.doesNotMatch(panel, /startPreview|stopPreview|restartPreview/);
 });

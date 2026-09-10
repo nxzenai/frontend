@@ -36,7 +36,11 @@ function StageIcon({ stage, build, events }: { stage: AgenticBuildStage; build: 
   return <Circle className="h-4 w-4 text-slate-700" />;
 }
 
-export default function BuildPanel({ projectId, version }: { projectId: string; version: AgenticVersion }) {
+export default function BuildPanel({ projectId, version, onBuildSucceeded }: {
+  projectId: string;
+  version: AgenticVersion;
+  onBuildSucceeded?: (versionId: string) => void;
+}) {
   const [builds, setBuilds] = useState<AgenticBuild[]>([]);
   const [selected, setSelected] = useState<AgenticBuild | null>(null);
   const [events, setEvents] = useState<AgenticBuildEvent[]>([]);
@@ -51,8 +55,9 @@ export default function BuildPanel({ projectId, version }: { projectId: string; 
     setSelected(build);
     setEvents(buildEvents);
     setBuilds(current => current.map(item => item.id === build.id ? build : item));
+    if (build.status === "succeeded") onBuildSucceeded?.(build.version_id);
     return build;
-  }, [projectId]);
+  }, [projectId, onBuildSucceeded]);
 
   useEffect(() => {
     let active = true;

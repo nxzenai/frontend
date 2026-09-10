@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2, CodeXml, Download, GitPullRequestArrow, History, Layers3 } from "lucide-react";
 import ArchitecturePlan from "./ArchitecturePlan";
 import GenerationProgress from "./GenerationProgress";
@@ -8,6 +8,7 @@ import PlanningProgress from "./PlanningProgress";
 import SourceBrowser from "./SourceBrowser";
 import VersionHistory from "./VersionHistory";
 import BuildPanel from "./BuildPanel";
+import PreviewPanel from "./PreviewPanel";
 import agenticService from "@/services/agentic.service";
 import type { AgenticPlan, AgenticProject, AgenticVersion } from "@/types/agentic";
 
@@ -18,7 +19,7 @@ interface Props {
   onProjectChanged: (project: AgenticProject) => void;
 }
 
-type WorkspaceTab = "overview" | "architecture" | "source" | "versions" | "build";
+type WorkspaceTab = "overview" | "architecture" | "source" | "build" | "preview" | "versions";
 
 function errorMessage(error: unknown): string {
   const candidate = error as { response?: { data?: { detail?: { message?: string } } }; message?: string };
@@ -33,6 +34,7 @@ export default function AgenticWorkspace({ project, initialPlan, onBack, onProje
   const [generating, setGenerating] = useState(false);
   const [versions, setVersions] = useState<AgenticVersion[]>([]);
   const [selectedVersion, setSelectedVersion] = useState<AgenticVersion | null>(null);
+  const [successfulBuildVersionIds, setSuccessfulBuildVersionIds] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState<WorkspaceTab>("overview");
   const [error, setError] = useState<string | null>(null);
 
@@ -48,6 +50,20 @@ export default function AgenticWorkspace({ project, initialPlan, onBack, onProje
     });
     return () => { active = false; };
   }, [project.id, project.current_version_id]);
+
+  useEffect(() => {
+    let active = true;
+    agenticService.builds(project.id).then(items => {
+      if (active) setSuccessfulBuildVersionIds(
+        new Set(items.filter(item => item.status === "succeeded").map(item => item.version_id)),
+      );
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [project.id]);
+
+  const buildSucceeded = useCallback((versionId: string) => {
+    setSuccessfulBuildVersionIds(current => new Set(current).add(versionId));
+  }, []);
 
   async function refreshProject() {
     const updated = await agenticService.project(project.id);
@@ -128,12 +144,14 @@ export default function AgenticWorkspace({ project, initialPlan, onBack, onProje
   if (generating) return <GenerationProgress />;
 
   const readyVersions = versions.filter(version => version.status === "ready");
+  const previewAvailable = Boolean(selectedVersion && successfulBuildVersionIds.has(selectedVersion.id));
   const tabs: Array<{ id: WorkspaceTab; label: string }> = [
     { id: "overview", label: "Overview" },
     { id: "architecture", label: "Architecture" },
     ...(readyVersions.length ? [{ id: "source" as const, label: "Source" }] : []),
-    ...(versions.length ? [{ id: "versions" as const, label: "Versions" }] : []),
     ...(readyVersions.length ? [{ id: "build" as const, label: "Build" }] : []),
+    ...(previewAvailable ? [{ id: "preview" as const, label: "Preview" }] : []),
+    ...(versions.length ? [{ id: "versions" as const, label: "Versions" }] : []),
   ];
 
   return (
@@ -170,7 +188,8 @@ export default function AgenticWorkspace({ project, initialPlan, onBack, onProje
       {tab === "architecture" && <ArchitecturePlan plan={plan} />}
       {tab === "source" && selectedVersion && <SourceBrowser key={selectedVersion.id} projectId={project.id} version={selectedVersion} />}
       {tab === "versions" && <VersionHistory projectId={project.id} versions={versions} currentVersionId={project.current_version_id} onBrowse={browse} />}
-      {tab === "build" && selectedVersion && <BuildPanel key={selectedVersion.id} projectId={project.id} version={selectedVersion} />}
+      {tab === "build" && selectedVersion && <BuildPanel key={selectedVersion.id} projectId={project.id} version={selectedVersion} onBuildSucceeded={buildSucceeded} />}
+      {tab === "preview" && selectedVersion && previewAvailable && <PreviewPanel key={selectedVersion.id} projectId={project.id} version={selectedVersion} />}
 
       {tab === "architecture" && showChanges && (
         <div className="mt-5 rounded-2xl border border-cyan-500/30 bg-slate-900 p-6">

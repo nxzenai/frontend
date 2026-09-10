@@ -8,6 +8,7 @@ import type {
   SourceTreeNode,
   AgenticBuild,
   AgenticBuildEvent,
+  AgenticPreview,
 } from "@/types/agentic";
 
 class AgenticService {
@@ -130,6 +131,44 @@ class AgenticService {
     return (
       await api.post<AgenticBuild>(
         `/agentic/projects/${projectId}/builds/${buildId}/cancel`,
+      )
+    ).data;
+  }
+
+  async startPreview(projectId: string, versionId: string): Promise<AgenticPreview> {
+    return (
+      await api.post<AgenticPreview>(
+        `/agentic/projects/${projectId}/versions/${versionId}/preview`,
+      )
+    ).data;
+  }
+
+  async previews(projectId: string): Promise<AgenticPreview[]> {
+    return (
+      await api.get<AgenticPreview[]>(`/agentic/projects/${projectId}/previews`)
+    ).data;
+  }
+
+  async preview(projectId: string, previewId: string): Promise<AgenticPreview> {
+    return (
+      await api.get<AgenticPreview>(
+        `/agentic/projects/${projectId}/previews/${previewId}`,
+      )
+    ).data;
+  }
+
+  async stopPreview(projectId: string, previewId: string): Promise<AgenticPreview> {
+    return (
+      await api.post<AgenticPreview>(
+        `/agentic/projects/${projectId}/previews/${previewId}/stop`,
+      )
+    ).data;
+  }
+
+  async restartPreview(projectId: string, previewId: string): Promise<AgenticPreview> {
+    return (
+      await api.post<AgenticPreview>(
+        `/agentic/projects/${projectId}/previews/${previewId}/restart`,
       )
     ).data;
   }

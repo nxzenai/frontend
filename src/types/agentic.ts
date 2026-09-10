@@ -182,3 +182,29 @@ export interface AgenticBuildEvent {
   message: string;
   created_at: string;
 }
+
+export type AgenticPreviewStatus =
+  | "starting"
+  | "running"
+  | "stopping"
+  | "stopped"
+  | "failed"
+  | "expired";
+
+export interface AgenticPreview {
+  id: string;
+  project_id: string;
+  version_id: string;
+  build_id: string;
+  status: AgenticPreviewStatus;
+  backend_port: number | null;
+  frontend_port: number | null;
+  preview_url: string | null;
+  backend_url: string | null;
+  created_at: string;
+  started_at: string | null;
+  expires_at: string;
+  stopped_at: string | null;
+  last_error: string | null;
+  logs: string;
+}
