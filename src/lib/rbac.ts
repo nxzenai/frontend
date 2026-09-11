@@ -5,6 +5,7 @@ export type UserRole =
   | "super_admin";
 
 export const PERMISSIONS = {
+  leads: ["admin", "super_admin"],
   dashboard: [
     "user",
     "instructor",
