@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { buildTrainingRegistration } from "../src/lib/trainingRegistration.ts";
 
 import {
   buildMarketingLeadPayload,
@@ -8,6 +9,32 @@ import {
 } from "../src/lib/marketingApi.ts";
 
 const source = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+
+test("registration submits all candidate fields to the existing backend", async () => {
+  const data = new FormData();
+  const fields = {
+    name: "Ada Lovelace", email: "ada@example.com", phone: "+91 90000 00000",
+    city: "Hyderabad", profession: "Student", program_interest: "AI Engineering",
+    qualification: "Graduate", organization: "Example College", experience: "Fresher",
+    referral_source: "Website", preferred_demo_date: "", message: "Training enquiry",
+  };
+  for (const [key, value] of Object.entries(fields)) data.set(key, value);
+  data.set("consent", "on");
+  const payload = buildTrainingRegistration(data);
+  assert.deepEqual(payload, { ...fields, source: "training_registration", consent: true });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    assert.equal(url, "https://coral-app-8t2db.ondigitalocean.app/api/leads/");
+    assert.equal(init.method, "POST");
+    assert.deepEqual(JSON.parse(init.body), payload);
+    return Response.json({ id: "lead-1", message: "Lead created successfully" });
+  };
+  try {
+    assert.equal((await submitMarketingLead(payload)).id, "lead-1");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
 test("marketing routes, navigation, contact fields, and legacy redirects are present", () => {
   const navbar = source("src/components/Navbar.tsx");

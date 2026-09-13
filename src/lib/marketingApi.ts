@@ -23,7 +23,12 @@ export interface MarketingContactValues {
   message: string;
 }
 
-const marketingApiUrl = (process.env.NEXT_PUBLIC_MARKETING_API_URL ?? "").replace(/\/$/, "");
+// NEXT_PUBLIC values are embedded at build time. Keep missing configuration
+// pointed at the existing backend rather than the frontend's nonexistent route.
+const marketingApiUrl = (
+  process.env.NEXT_PUBLIC_MARKETING_API_URL?.trim() ||
+  "https://coral-app-8t2db.ondigitalocean.app"
+).replace(/\/+$/, "").replace(/\/api(?:\/leads)?$/, "");
 
 export async function submitMarketingLead(payload: MarketingLeadPayload): Promise<{ id: string; message: string }> {
   const response = await fetch(`${marketingApiUrl}/api/leads/`, {
