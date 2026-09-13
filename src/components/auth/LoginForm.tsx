@@ -161,7 +161,7 @@ export default function LoginForm() {
         <button
           type="button"
           onClick={() =>
-            router.push("/register")
+            router.push("/signup")
           }
           className="ml-2 font-semibold text-blue-400 hover:text-blue-300"
         >
