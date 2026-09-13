@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect } from "next/navigation";
-import { useRouter } from "next/navigation";
+import AuthLayout from "@/components/auth/AuthLayout";
+import RegisterForm from "@/components/auth/RegisterForm";
 
-<<<<<<<< HEAD:src/app/signup/page.tsx
 export default function SignupPage() {
   return (
     <AuthLayout
@@ -14,14 +13,3 @@ export default function SignupPage() {
     </AuthLayout>
   );
 }
-========
-export default function RegisterRedirect() {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace("/register");
-  }, [router]);
-
-  return null;
-}
->>>>>>>> origin/main:src/app/register/page.tsx
