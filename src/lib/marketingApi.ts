@@ -6,6 +6,13 @@ export interface MarketingLeadPayload {
   program_interest: string;
   preferred_demo_date: string;
   message?: string;
+  source?: string;
+  city?: string;
+  qualification?: string;
+  organization?: string;
+  experience?: string;
+  referral_source?: string;
+  consent?: boolean;
 }
 
 export interface MarketingContactValues {

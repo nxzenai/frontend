@@ -98,14 +98,10 @@ export default function Sidebar() {
         />
 
         <SidebarSection
-          title="Business"
-          items={businessItems}
+          title="Admin"
+          items={[...businessItems, ...platformItems]}
         />
 
-        <SidebarSection
-          title="Platform"
-          items={platformItems}
-        />
 
         <SidebarSection
           title="Dashboard"
