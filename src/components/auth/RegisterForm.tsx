@@ -234,6 +234,7 @@ export default function RegisterForm() {
         >
           Sign In
         </button>
+
       </p>
     </form>
   );
