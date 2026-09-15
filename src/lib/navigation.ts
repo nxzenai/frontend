@@ -10,12 +10,13 @@ import {
   Building2,
   Users,
   Settings,
+  type LucideIcon,
 } from "lucide-react";
 
 export interface NavigationItem {
   title: string;
   href: string;
-  icon: any;
+  icon: LucideIcon;
   permission:
   | "dashboard"
   | "python_lab"
@@ -27,6 +28,7 @@ export interface NavigationItem {
   | "genai"
   | "agentic_ai"
   | "crm"
+  | "leads"
   | "user_management"
   | "platform";
   section:
@@ -105,6 +107,13 @@ export const NAVIGATION: NavigationItem[] = [
     comingSoon: true,
   },
 
+  {
+    title: "Leads",
+    href: "/leads",
+    icon: Users,
+    permission: "leads",
+    section: "business",
+  },
   {
     title: "CRM",
     href: "/crm",

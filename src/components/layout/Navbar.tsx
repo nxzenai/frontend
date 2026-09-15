@@ -15,30 +15,17 @@ export default function Navbar() {
     <header
       className="
         flex
-        h-20
+        h-24
         items-center
-        justify-between
+        gap-6
         border-b
         border-slate-800
         bg-[#020617]
         px-8
       "
     >
-      {/* Left Section */}
-      <div className="flex flex-col">
-
-        <h1 className="text-2xl font-bold text-white">
-          NxZen AI Studio
-        </h1>
-
-        <p className="text-sm text-slate-400">
-          Enterprise AI Development Platform
-        </p>
-
-      </div>
-
-      {/* Center Search */}
-      <div className="hidden w-full max-w-xl px-12 lg:block">
+      {/* Search */}
+      <div className="hidden min-w-0 max-w-2xl flex-1 lg:block">
 
         <div className="relative">
 
@@ -77,10 +64,12 @@ export default function Navbar() {
       </div>
 
       {/* Right Section */}
-      <div className="flex items-center gap-6">
+      <div className="ml-auto flex shrink-0 items-center gap-6">
 
         {/* Notifications */}
         <button
+          type="button"
+          aria-label="Notifications"
           className="
             rounded-xl
             border
