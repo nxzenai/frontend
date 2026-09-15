@@ -46,7 +46,15 @@ export default function useGenAIChat() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [selectedAttachmentIds, setSelectedAttachmentIds] = useState<string[]>([]);
+  const [selectedAttachmentIds, updateSelectedAttachmentIds] = useState<string[]>([]);
+  const selectedAttachmentIdsRef = useRef<string[]>([]);
+  const attachmentScopeRef = useRef(0);
+  const attachmentSaveRef = useRef<Promise<void>>(Promise.resolve());
+  const setSelectedAttachmentIds = useCallback((value: string[] | ((current: string[]) => string[])) => {
+    const next = typeof value === "function" ? value(selectedAttachmentIdsRef.current) : value;
+    selectedAttachmentIdsRef.current = next;
+    updateSelectedAttachmentIds(next);
+  }, []);
   const [tools, setTools] = useState<ToolStatus[]>([]);
   const [routeInfo, setRouteInfo] = useState("");
   const [toolActivity, setToolActivity] = useState("");
@@ -74,6 +82,7 @@ export default function useGenAIChat() {
 
   const openConversation = useCallback(async (id: string) => {
     if (isLoading) return;
+    attachmentScopeRef.current += 1;
     setError(null);
     const conversation = await GenAIService.getConversation(id);
     setActiveConversationId(id);
@@ -104,6 +113,7 @@ export default function useGenAIChat() {
   }, [isLoading]);
 
   const newChat = useCallback(() => {
+    attachmentScopeRef.current += 1;
     controllerRef.current?.abort();
     setActiveConversationId(null); setMessages([]); setAttachments([]); setSelectedAttachmentIds([]);
     setError(null); setRouteInfo(""); setToolActivity(""); setPendingConfirmation(null); setPendingResolution(null);
@@ -236,6 +246,7 @@ export default function useGenAIChat() {
   }, []);
 
   const selectProject = useCallback(async (projectId: string | null) => {
+    attachmentScopeRef.current += 1;
     if (activeConversationId) await GenAIService.setConversationProject(activeConversationId, projectId);
     setActiveProjectId(projectId);
     setAttachments(activeConversationId || projectId ? await GenAIService.attachments(activeConversationId, projectId) : []);
@@ -255,18 +266,27 @@ export default function useGenAIChat() {
   }, [activeProjectId, selectProject]);
 
   const uploadAttachment = useCallback(async (file: File) => {
+    const scope = attachmentScopeRef.current;
     setError(null); setToolActivity(`Reading ${file.name}…`);
     try {
       const attachment = await GenAIService.uploadAttachment(file, activeConversationId, activeProjectId);
-      const nextSelection = addComposerAttachment(selectedAttachmentIds, attachment.id);
-      if (activeConversationId) await GenAIService.setActiveAttachments(activeConversationId, nextSelection);
+      if (scope !== attachmentScopeRef.current) return;
+      setSelectedAttachmentIds(current => addComposerAttachment(current, attachment.id));
       setAttachments(current => [...current.filter(item => item.id !== attachment.id), attachment]);
-      setSelectedAttachmentIds(nextSelection);
+      if (activeConversationId) {
+        const save = attachmentSaveRef.current.catch(() => undefined).then(async () => {
+          if (scope === attachmentScopeRef.current) {
+            await GenAIService.setActiveAttachments(activeConversationId, selectedAttachmentIdsRef.current);
+          }
+        });
+        attachmentSaveRef.current = save;
+        await save;
+      }
       setToolActivity(`${file.name} is ready.`);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "The file could not be attached."); setToolActivity("");
     }
-  }, [activeConversationId, activeProjectId, selectedAttachmentIds]);
+  }, [activeConversationId, activeProjectId, setSelectedAttachmentIds]);
 
   const deleteAttachment = useCallback(async (id: string) => {
     const nextSelection = removeComposerAttachment(selectedAttachmentIds, id);
