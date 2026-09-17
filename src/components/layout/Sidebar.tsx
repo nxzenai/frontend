@@ -11,13 +11,28 @@ import { NAVIGATION } from "@/lib/navigation";
 import { canAccess, UserRole } from "@/lib/rbac";
 
 import {
-  ShieldCheck,
+  ChevronLeft,
+  ChevronRight,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 
-export default function Sidebar() {
+interface SidebarProps {
+  collapsed?: boolean;
+  mobile?: boolean;
+  onToggleCollapse?: () => void;
+  onNavigate?: () => void;
+}
+
+export default function Sidebar({
+  collapsed = false,
+  mobile = false,
+  onToggleCollapse,
+  onNavigate,
+}: SidebarProps) {
   const router = useRouter();
   const { user, logout } = useAuth();
+
   const navigation = NAVIGATION;
 
   function handleLogout() {
@@ -25,183 +40,186 @@ export default function Sidebar() {
     router.push("/login");
   }
 
-  //////////////////////////////////////////////////////
-  // Navigation Groups
-  //////////////////////////////////////////////////////
-
   const labItems = navigation.filter(
     (item) =>
       item.section === "labs" &&
-      canAccess(
-        user?.role as UserRole,
-        item.permission
-      )
+      canAccess(user?.role as UserRole, item.permission)
   );
 
   const businessItems = navigation.filter(
     (item) =>
       item.section === "business" &&
-      canAccess(
-        user?.role as UserRole,
-        item.permission
-      )
+      canAccess(user?.role as UserRole, item.permission)
   );
 
   const platformItems = navigation.filter(
     (item) =>
       item.section === "platform" &&
-      canAccess(
-        user?.role as UserRole,
-        item.permission
-      )
+      canAccess(user?.role as UserRole, item.permission)
   );
 
   const dashboardItems = navigation.filter(
     (item) =>
       item.section === "dashboard" &&
-      canAccess(
-        user?.role as UserRole,
-        item.permission
-      )
+      canAccess(user?.role as UserRole, item.permission)
   );
 
-  //////////////////////////////////////////////////////
-  // UI
-  //////////////////////////////////////////////////////
+  const showExpanded = mobile || !collapsed;
 
   return (
-    <aside className="flex h-screen w-72 flex-col border-r border-slate-800 bg-[#020617]">
-      {/* Logo */}
+    <aside className="flex h-full w-full flex-col bg-[#020617]">
+      {/* Branding */}
+      <div
+        className={`
+          flex h-24 shrink-0 items-center border-b border-slate-800
+          ${showExpanded ? "justify-between px-4" : "justify-center px-2"}
+        `}
+      >
+        <div className="flex min-w-0 items-center">
+          {showExpanded ? (
+            <div>
+              <Image
+                src="/nxzenai-navbar-logo-v2.png"
+                width={2172}
+                height={724}
+                priority
+                alt="NxZenAI"
+                className="h-[36px] w-[145px] object-contain object-left"
+              />
 
-      <div className="flex h-24 shrink-0 items-center border-b border-slate-800 px-6">
-        <div>
-          <Image
-            src="/nxzenai-navbar-logo-v2.png"
-            width={2172}
-            height={724}
-            priority
-            alt="NxZenAI"
-            className="h-[44px] w-[160px] object-contain object-left"
-          />
-          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-            AI Studio
-          </p>
+              <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                AI Studio
+              </p>
+            </div>
+          ) : (
+            <Image
+              src="/nxzenai-icon.png"
+              width={48}
+              height={48}
+              alt="NxZenAI"
+              className="h-9 w-9 object-contain"
+            />
+          )}
         </div>
+
+        {!mobile && onToggleCollapse && showExpanded && (
+          <button
+            type="button"
+            aria-label="Collapse sidebar"
+            onClick={onToggleCollapse}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-800 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+          >
+            <ChevronLeft size={17} />
+          </button>
+        )}
       </div>
 
-      {/* Navigation */}
+      {/* Collapsed Expand Button */}
+      {!mobile && collapsed && onToggleCollapse && (
+        <div className="flex justify-center border-b border-slate-800 py-3">
+          <button
+            type="button"
+            aria-label="Expand sidebar"
+            onClick={onToggleCollapse}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-800 hover:text-white"
+          >
+            <ChevronRight size={17} />
+          </button>
+        </div>
+      )}
 
-      <div className="flex-1 overflow-y-auto px-4 py-5">
+      {/* Navigation */}
+      <div
+        className="
+          flex-1 overflow-y-auto px-3 py-4
+          [scrollbar-width:none]
+          [&::-webkit-scrollbar]:hidden
+        "
+      >
         <SidebarSection
           title="AI Labs"
           items={labItems}
+          collapsed={!showExpanded}
+          onNavigate={onNavigate}
         />
 
         <SidebarSection
-          title="Admin"
-          items={[...businessItems, ...platformItems]}
+          title="Management"
+          items={businessItems}
+          collapsed={!showExpanded}
+          onNavigate={onNavigate}
         />
 
+        <SidebarSection
+          title="System"
+          items={platformItems}
+          collapsed={!showExpanded}
+          onNavigate={onNavigate}
+        />
 
         <SidebarSection
           title="Dashboard"
           items={dashboardItems}
+          collapsed={!showExpanded}
+          onNavigate={onNavigate}
         />
       </div>
 
-      {/* Bottom Profile */}
+      {/* Profile Footer */}
+      <div className="shrink-0 border-t border-slate-800 bg-[#020617] p-3">
+        {showExpanded ? (
+          <>
+            <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
+                {user?.full_name?.charAt(0).toUpperCase() || "U"}
+              </div>
 
-      <div className="border-t border-slate-800 bg-[#020617] p-4">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-          {/* User */}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-white">
+                  {user?.full_name || "User"}
+                </p>
 
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-lg font-bold text-white">
-              {user?.full_name?.charAt(0).toUpperCase()}
+                <div className="mt-1 flex items-center gap-1 text-[11px] text-slate-400">
+                  <ShieldCheck size={12} />
+                  <span className="truncate capitalize">
+                    {user?.role?.replace("_", " ") || "User"}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                title="Logout"
+                onClick={handleLogout}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-red-500/10 hover:text-red-300"
+              >
+                <LogOut size={16} />
+              </button>
             </div>
 
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold text-white">
-                {user?.full_name}
-              </p>
-
-              <p className="truncate text-xs text-slate-400">
-                {user?.email}
-              </p>
-            </div>
-          </div>
-
-          {/* Role */}
-
-          <div className="mt-4">
-            <span
-              className={`
-                inline-flex
-                items-center
-                gap-2
-                rounded-full
-                px-3
-                py-1
-                text-xs
-                font-semibold
-                ${
-                  user?.role === "super_admin"
-                    ? "bg-red-500/20 text-red-300"
-                    : user?.role === "admin"
-                    ? "bg-purple-500/20 text-purple-300"
-                    : user?.role === "instructor"
-                    ? "bg-amber-500/20 text-amber-300"
-                    : "bg-green-500/20 text-green-300"
-                }
-              `}
+            <p className="mt-3 text-center text-[10px] text-slate-600">
+              Enterprise Edition • v1.0.0
+            </p>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-3">
+            <div
+              title={user?.full_name || "User"}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white"
             >
-              <ShieldCheck size={14} />
+              {user?.full_name?.charAt(0).toUpperCase() || "U"}
+            </div>
 
-              {user?.role
-                ?.replace("_", " ")
-                .toUpperCase()}
-            </span>
+            <button
+              type="button"
+              title="Logout"
+              onClick={handleLogout}
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-red-500/10 hover:text-red-300"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
-
-          {/* Divider */}
-
-          <div className="my-4 border-t border-slate-800" />
-
-          {/* Logout */}
-
-          <button
-            onClick={handleLogout}
-            className="
-              flex
-              w-full
-              items-center
-              justify-center
-              gap-2
-              rounded-xl
-              border
-              border-red-500/30
-              bg-red-500/10
-              px-4
-              py-3
-              text-red-300
-              transition-all
-              duration-200
-              hover:bg-red-500
-              hover:text-white
-            "
-          >
-            <LogOut size={18} />
-            Logout
-          </button>
-        </div>
-
-        {/* Version */}
-
-        <div className="mt-4 text-center">
-          <p className="text-xs text-slate-600">
-            Enterprise Edition • v1.0.0
-          </p>
-        </div>
+        )}
       </div>
     </aside>
   );
