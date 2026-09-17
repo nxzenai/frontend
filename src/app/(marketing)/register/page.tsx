@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function TrainingRegistrationPage() {
   return (
-    <main>
+    <main className="mk-form-page">
       <PageHero
         eyebrow="Training Registration"
         title="Take your next step"
@@ -18,7 +18,7 @@ export default function TrainingRegistrationPage() {
         description="Tell us about your goals. Our team will help you choose a program and arrange a demo or consultation."
       />
 
-      <section className="mk-section mk-section-alt">
+      <section className="mk-section mk-section-alt mk-form-section">
         <div className="mk-container max-w-4xl">
           <TrainingRegistrationForm />
         </div>

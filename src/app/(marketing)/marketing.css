@@ -84,3 +84,35 @@
 @media (max-width: 900px) { .mk-card-grid.mk-four { grid-template-columns: repeat(2,1fr); }.mk-card-grid { grid-template-columns: repeat(2,1fr); }.mk-studio-body { grid-template-columns: 125px minmax(0,1fr); }.mk-process { grid-template-columns: repeat(2,1fr); }.mk-contact-layout { grid-template-columns: 1fr; } }
 @media (max-width: 680px) { .mk-container { width: min(100% - 28px,1180px); }.mk-section { padding: 78px 0; }.mk-section.mk-pt-0 { padding-top: 0; }.mk-page-hero { min-height: 500px; padding: 135px 0 75px; }.mk-section-heading { display: block; }.mk-section-heading > p { margin-top: 22px; }.mk-card-grid,.mk-card-grid.mk-four,.mk-form-grid { grid-template-columns: 1fr; }.mk-studio { margin-top: 40px; }.mk-studio-bar { grid-template-columns: 1fr auto; }.mk-window-dots { display: none; }.mk-studio-status { font-size: 0; }.mk-studio-body { display: block; min-height: auto; }.mk-studio aside { display: none; }.mk-workspace { padding: 12px; }.mk-workspace-head button { display: none; }.mk-workspace-grid { grid-template-columns: 1fr; }.mk-code,.mk-leader { display: none; }.mk-genai { grid-column: auto; }.mk-final-cta { padding: 32px 24px; align-items: flex-start; flex-direction: column; }.mk-cta-actions { width: 100%; }.mk-cta-actions a { width: 100%; }.mk-process { grid-template-columns: 1fr; }.mk-contact-form,.mk-contact-copy { padding: 24px 19px; } }
 @media (prefers-reduced-motion: reduce) { .marketing-site *, .marketing-site *::before, .marketing-site *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+/* Compact hero layout for form-driven pages */
+.mk-form-page .mk-page-hero {
+  min-height: auto;
+  padding: 92px 0 42px;
+}
+
+.mk-form-page .mk-page-hero-inner {
+  max-width: 860px;
+}
+
+.mk-form-page .mk-page-hero h1 {
+  margin-top: 18px;
+  font-size: clamp(2.6rem, 6vw, 4.7rem);
+  line-height: 0.95;
+}
+
+.mk-form-page .mk-page-hero .mk-lead {
+  max-width: 760px;
+  margin-top: 18px;
+  font-size: clamp(1rem, 1.8vw, 1.15rem);
+  line-height: 1.6;
+}
+
+/* Pull forms much closer to the hero */
+.mk-form-section {
+  padding-top: 42px;
+  padding-bottom: 90px;
+}
+
+.mk-form-section .mk-contact-layout {
+  margin-top: 0;
+}
