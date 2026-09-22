@@ -43,25 +43,25 @@ export default function Sidebar({
   const labItems = navigation.filter(
     (item) =>
       item.section === "labs" &&
-      canAccess(user?.role as UserRole, item.permission)
+      canAccess(user?.role as UserRole, item.permission, user?.effective_modules)
   );
 
   const businessItems = navigation.filter(
     (item) =>
       item.section === "business" &&
-      canAccess(user?.role as UserRole, item.permission)
+      canAccess(user?.role as UserRole, item.permission, user?.effective_modules)
   );
 
   const platformItems = navigation.filter(
     (item) =>
       item.section === "platform" &&
-      canAccess(user?.role as UserRole, item.permission)
+      canAccess(user?.role as UserRole, item.permission, user?.effective_modules)
   );
 
   const dashboardItems = navigation.filter(
     (item) =>
       item.section === "dashboard" &&
-      canAccess(user?.role as UserRole, item.permission)
+      canAccess(user?.role as UserRole, item.permission, user?.effective_modules)
   );
 
   const showExpanded = mobile || !collapsed;

@@ -27,6 +27,13 @@ export interface User {
   role: string;
   is_active: boolean;
   is_verified: boolean;
+  account_status: "pending_approval" | "active" | "rejected" | "suspended" | "expired" | "deleted";
+  organization_id?: string | null;
+  course_id?: string | null;
+  batch_id?: string | null;
+  access_start_at?: string | null;
+  access_end_at?: string | null;
+  effective_modules: string[];
 }
 
 export interface MeResponse {

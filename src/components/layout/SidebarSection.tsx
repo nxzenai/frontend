@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import type { NavigationItem } from "@/lib/navigation";
+import userManagement from "@/services/userManagement.service";
 
 interface Props {
   title: string;
@@ -75,7 +76,10 @@ export default function SidebarSection({
               href={item.href}
               prefetch={false}
               title={collapsed ? item.title : undefined}
-              onClick={onNavigate}
+              onClick={() => {
+                void userManagement.track(item.permission, "module_opened").catch(() => undefined);
+                onNavigate?.();
+              }}
               className={`
                 group relative flex items-center rounded-lg
                 transition-all duration-200

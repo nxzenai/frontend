@@ -38,8 +38,10 @@ class AuthService {
   }
 
   logout() {
-    localStorage.removeItem("token");
-    window.location.href = "/login";
+    void api.post("/auth/logout").finally(() => {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    });
   }
 
   getToken() {
