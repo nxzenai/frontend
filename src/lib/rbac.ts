@@ -1,6 +1,9 @@
 export type UserRole =
   | "user"
   | "instructor"
+  | "trainer"
+  | "trainee"
+  | "guest"
   | "admin"
   | "super_admin";
 
@@ -85,9 +88,12 @@ export const PERMISSIONS = {
 
 export function canAccess(
   role: UserRole | undefined,
-  module: keyof typeof PERMISSIONS
+  module: keyof typeof PERMISSIONS,
+  effectiveModules?: readonly string[],
 ) {
   if (!role) return false;
+
+  if (effectiveModules) return effectiveModules.includes(module);
 
   return (PERMISSIONS[module] as readonly UserRole[]).includes(role);
 }
@@ -111,7 +117,7 @@ export function isInstructor(
   role?: UserRole
 ) {
   return (
-    role === "instructor" ||
+    role === "instructor" || role === "trainer" ||
     role === "admin" ||
     role === "super_admin"
   );

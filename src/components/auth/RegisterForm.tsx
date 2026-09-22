@@ -49,7 +49,7 @@ export default function RegisterForm() {
     try {
       setLoading(true);
 
-      await AuthService.register({
+      const response = await AuthService.register({
         full_name: form.full_name,
         username: form.username,
         email: form.email,
@@ -57,7 +57,7 @@ export default function RegisterForm() {
       });
 
       toast.success(
-        "Account created successfully."
+        response.message ?? "Registration received. Your account is pending approval."
       );
 
       router.push("/login");
