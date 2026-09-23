@@ -16,10 +16,12 @@ export interface LoginResponse {
   data: {
     access_token: string;
     token_type: string;
+    is_first_login?: boolean;
   };
 }
 
 export interface User {
+  is_first_login?: boolean;
   id: string;
   email: string;
   username: string;
