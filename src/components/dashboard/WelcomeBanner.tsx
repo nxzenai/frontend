@@ -62,7 +62,7 @@ export default function WelcomeBanner() {
             text-white
           "
         >
-          Welcome back,
+          {user?.is_first_login ? "Welcome to NxZenAI Studio," : "Welcome Back,"}
           <span className="text-blue-400">
             {" "}
             {firstName}
