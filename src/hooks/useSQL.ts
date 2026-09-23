@@ -31,6 +31,8 @@ FROM employees;
 
   const [tables, setTables] =
     useState<TableSchema[]>([]);
+  const [activeDatabase, setActiveDatabase] = useState("");
+  const [databases, setDatabases] = useState<string[]>([]);
 
   const [error, setError] =
     useState("");
@@ -54,6 +56,19 @@ FROM employees;
           );
 
         setResult(data);
+        if (data.database_changed) {
+          setTables([]);
+          setActiveDatabase("");
+          setDatabases([]);
+          try {
+            const schema = await SQLService.schema();
+            setTables(schema.tables);
+            setActiveDatabase(schema.active_database);
+            setDatabases(schema.databases);
+          } catch {
+            setError("Database operation succeeded, but schema refresh failed. Reload the page to refresh database state.");
+          }
+        }
 
       } catch (err: any) {
 
@@ -94,6 +109,8 @@ FROM employees;
         setTables(
           data.tables,
         );
+        setActiveDatabase(data.active_database);
+        setDatabases(data.databases);
 
       } catch (err) {
 
@@ -137,6 +154,8 @@ FROM employees;
     execute,
 
     tables,
+    activeDatabase,
+    databases,
 
     reloadSchema: loadSchema,
 

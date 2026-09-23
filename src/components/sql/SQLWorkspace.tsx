@@ -23,6 +23,8 @@ export default function SQLWorkspace() {
     execute,
     tables,
     error,
+    activeDatabase,
+    databases,
   } = useSQL();
 
   //////////////////////////////////////////////////////
@@ -63,6 +65,11 @@ export default function SQLWorkspace() {
 
       <div className="w-72 flex-shrink-0">
 
+        <div className="mb-4 text-sm text-slate-300">
+          <p>Active database: {activeDatabase || "Loading…"}</p>
+          <p className="mt-1 text-slate-400">Databases: {databases.join(", ") || "—"}</p>
+        </div>
+
         <SchemaExplorer
           tables={tables}
         />
@@ -88,6 +95,8 @@ export default function SQLWorkspace() {
         />
 
         {/* Results */}
+
+        {result?.message && <p role="status" className="text-sm text-green-300">{result.message}</p>}
 
         <SQLResultTable
           result={result}
