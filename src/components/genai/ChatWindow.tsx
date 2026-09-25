@@ -136,8 +136,8 @@ export default function ChatWindow() {
           <select value={chat.tier} onChange={event => chat.setTier(event.target.value as ModelTier)} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white">
             <option value="auto">Auto</option>
             <option value="fast" disabled={!tierAvailable("fast")}>Fast{tierAvailable("fast") ? "" : " — unavailable"}</option>
-            <option value="balanced" disabled={!tierAvailable("balanced")}>Balanced{tierAvailable("balanced") ? "" : " — unavailable"}</option>
-            <option value="deep" disabled={!tierAvailable("deep")}>Deep{tierAvailable("deep") ? "" : " — unavailable"}</option>
+            <option value="balanced" disabled={!tierAvailable("balanced")}>Standard{tierAvailable("balanced") ? "" : " — unavailable"}</option>
+            <option value="deep" disabled={!tierAvailable("deep")}>Advanced{tierAvailable("deep") ? "" : " — unavailable"}</option>
           </select>
           <select value={chat.reasoning} onChange={event => chat.setReasoning(event.target.value as ReasoningLevel)} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white">
             <option value="quick">Quick</option><option value="standard">Standard</option><option value="deep">Deep</option>
