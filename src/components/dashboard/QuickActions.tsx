@@ -28,6 +28,9 @@ export default function QuickActions() {
   const isSuperAdmin =
     user?.role === "super_admin";
 
+  const hasModule = (module: string) =>
+    user?.effective_modules?.includes(module) ?? false;
+
   return (
     <section className="mb-8">
 
@@ -51,6 +54,7 @@ export default function QuickActions() {
 
         {/* Python Lab */}
 
+        {hasModule("python_lab") && (
         <button
           onClick={() => router.push("/python-lab")}
           className="
@@ -94,9 +98,11 @@ export default function QuickActions() {
           </p>
 
         </button>
+        )}
 
         {/* SQL */}
 
+        {hasModule("sql_lab") && (
         <button
           onClick={() => router.push("/sql")}
           className="
@@ -140,9 +146,11 @@ export default function QuickActions() {
           </p>
 
         </button>
+        )}
 
         {/* AutoML */}
 
+        {hasModule("automl") && (
         <button
           onClick={() => router.push("/automl")}
           className="
@@ -186,9 +194,11 @@ export default function QuickActions() {
           </p>
 
         </button>
+        )}
 
         {/* AutoDL */}
 
+        {hasModule("autodl") && (
         <button
           onClick={() => router.push("/autodl")}
           className="
@@ -232,9 +242,11 @@ export default function QuickActions() {
           </p>
 
         </button>
+        )}
 
         {/* AutoNLP */}
 
+        {hasModule("autonlp") && (
         <button
           onClick={() => router.push("/autonlp")}
           className="
@@ -278,9 +290,11 @@ export default function QuickActions() {
           </p>
 
         </button>
+        )}
 
         {/* GenAI */}
 
+        {hasModule("genai") && (
         <button
           onClick={() => router.push("/genai")}
           className="
@@ -324,10 +338,11 @@ export default function QuickActions() {
           </p>
 
         </button>
+        )}
 
         {/* CRM - Admin & Super Admin */}
 
-        {isAdmin && (
+        {isAdmin && hasModule("crm") && (
 
           <button
             onClick={() => router.push("/crm")}
@@ -377,7 +392,7 @@ export default function QuickActions() {
 
         {/* User Management - Super Admin Only */}
 
-        {isSuperAdmin && (
+        {isSuperAdmin && hasModule("user_management") && (
 
           <button
             onClick={() => router.push("/users")}

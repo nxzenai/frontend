@@ -1,13 +1,43 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { submitMarketingLead } from "@/lib/marketingApi";
 import { buildTrainingRegistration, experiences, professions, programs } from "@/lib/trainingRegistration";
+
+function nextThreeSaturdays() {
+  const today = new Date();
+  const saturday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  saturday.setDate(saturday.getDate() + (6 - saturday.getDay() + 7) % 7);
+  return Array.from({ length: 3 }, (_, index) => {
+    const date = new Date(saturday);
+    date.setDate(date.getDate() + index * 7);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return { value: `${year}-${month}-${day}`, label: `${day}-${month}-${year}` };
+  });
+}
 
 export default function TrainingRegistrationForm() {
   const [status, setStatus] = useState<"idle" | "loading" | "success">("idle");
   const [error, setError] = useState("");
   const submitting = useRef(false);
+  const [saturdays, setSaturdays] = useState<ReturnType<typeof nextThreeSaturdays>>([]);
+  const [preferredDate, setPreferredDate] = useState("");
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    function refreshDates() {
+      const dates = nextThreeSaturdays();
+      setSaturdays(dates);
+      setPreferredDate(value => dates.some(date => date.value === value) ? value : "");
+      const now = new Date();
+      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      timer = setTimeout(refreshDates, midnight.getTime() - now.getTime());
+    }
+    refreshDates();
+    return () => clearTimeout(timer);
+  }, []);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -15,6 +45,11 @@ export default function TrainingRegistrationForm() {
     setError("");
     try {
       const payload = buildTrainingRegistration(new FormData(event.currentTarget));
+      if (payload.preferred_demo_date && !nextThreeSaturdays().some(date => date.value === payload.preferred_demo_date)) {
+        setPreferredDate("");
+        setSaturdays(nextThreeSaturdays());
+        throw new Error("Please select one of the next three Saturdays.");
+      }
       submitting.current = true;
       setStatus("loading");
       await submitMarketingLead(payload);
@@ -42,7 +77,7 @@ export default function TrainingRegistrationForm() {
       <label><span>Current Qualification / Role *</span><input name="qualification" required maxLength={300} /></label>
       <label><span>College / Company Name</span><input name="organization" maxLength={300} autoComplete="organization" /></label>
       <label><span>Experience Level</span><select name="experience" defaultValue=""><option value="">Select experience (optional)</option>{experiences.map(value => <option key={value}>{value}</option>)}</select></label>
-      <label><span>Preferred Demo / Consultation Date</span><input type="date" name="preferred_demo_date" /><small className="text-slate-400">Optional. Our team will confirm availability.</small></label>
+      <label><span>Preferred Demo / Consultation Date</span><select name="preferred_demo_date" value={preferredDate} onChange={event => setPreferredDate(event.target.value)}><option value="">Select Saturday (optional)</option>{saturdays.map(date => <option key={date.value} value={date.value}>{date.label}</option>)}</select><small className="text-slate-400">Optional. Our team will confirm availability.</small></label>
       <label><span>How did you hear about NxZenAI?</span><input name="referral_source" maxLength={300} /></label>
     </fieldset>
     <label><span>Message / Expectations</span><textarea name="message" rows={4} maxLength={4000} disabled={status === "loading"} /></label>
