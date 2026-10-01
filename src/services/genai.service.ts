@@ -359,6 +359,20 @@ class GenAIService {
       `/genai/attachments/${id}`
     );
   }
+
+  async downloadPredictionExport(id: string, filename: string): Promise<void> {
+    const response = await api.get<Blob>(`/genai/prediction-exports/${encodeURIComponent(id)}`, {
+      responseType: "blob",
+    });
+    const url = URL.createObjectURL(response.data);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
 }
 
 export default new GenAIService();

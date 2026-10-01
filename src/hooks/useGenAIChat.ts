@@ -17,6 +17,7 @@ import type {
 
 
 const now = () => new Date().toISOString();
+const supportedPredictionImage = /\.(png|jpe?g|webp|bmp|tiff?)$/i;
 
 type ResolvedTool = {
   tool: string;
@@ -62,6 +63,16 @@ export default function useGenAIChat() {
   const [pendingResolution, setPendingResolution] = useState<PendingResolution | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (error !== "Upload at least two supported test images."
+        || pendingResolution?.tool !== "autodl"
+        || pendingResolution.arguments.prediction_mode !== "image_batch") return;
+    const trainingId = String(pendingResolution.arguments.dataset_attachment_id
+      ?? pendingResolution.arguments.training_attachment_id ?? "");
+    const count = attachments.filter(file => selectedAttachmentIds.includes(file.id)
+      && file.id !== trainingId && supportedPredictionImage.test(file.filename)).length;
+    if (count >= 2) setError(null);
+  }, [attachments, error, pendingResolution, selectedAttachmentIds]);
   const controllerRef = useRef<AbortController | null>(null);
   const generationRef = useRef<string | null>(null);
 
@@ -135,9 +146,15 @@ export default function useGenAIChat() {
     const controller = new AbortController();
     controllerRef.current = controller;
     let streamedError: string | null = null;
+    const trainingAttachmentId = String(pendingResolution?.arguments.dataset_attachment_id
+      ?? pendingResolution?.arguments.training_attachment_id ?? "");
     const continuationAttachments = pendingResolution && selectedAttachmentIds.length > 0
-      ? selectedAttachmentIds : pendingResolution?.attachmentIds ?? [];
+      ? selectedAttachmentIds.filter(id => id !== trainingAttachmentId)
+      : (pendingResolution?.attachmentIds ?? []).filter(id => id !== trainingAttachmentId);
     const continuationArguments: Record<string, unknown> = pendingResolution ? { ...pendingResolution.arguments } : {};
+    if (pendingResolution?.tool === "autodl" && continuationArguments.prediction_mode === "image_batch") {
+      delete continuationArguments.attachment_id;
+    }
     if (pendingResolution && continuationAttachments.length === 1
       && continuationAttachments[0] !== pendingResolution.attachmentIds[0]) {
       continuationArguments.attachment_id = continuationAttachments[0];
@@ -181,11 +198,21 @@ export default function useGenAIChat() {
             ? { ...message, content: message.content + event.content } : message));
         } else if (event.type === "done" && event.message) {
           setSelectedAttachmentIds(current => preserveComposerAttachmentIds(current));
-          setPendingResolution(null);
+          const offer = event.message.metadata?.pending_prediction_offer as {
+            tool: string; action: string; arguments: Record<string, unknown>;
+            attachment_ids: string[]; missing_fields: string[];
+            candidates: Array<Record<string, unknown>>; prompt: string; original_action: string;
+          } | undefined;
+          setPendingResolution(offer ? {
+            tool: offer.tool, action: offer.action, arguments: offer.arguments,
+            attachmentIds: offer.attachment_ids, missingFields: offer.missing_fields,
+            candidates: offer.candidates, message: offer.prompt, query: offer.original_action,
+          } : null);
           setPendingConfirmation(null);
           setMessages(current => current.map(message => message.id === temporaryAssistantId ? event.message! : message));
         } else if (event.type === "error") {
           setSelectedAttachmentIds(current => preserveComposerAttachmentIds(current));
+          setToolActivity("");
           streamedError = event.message;
           setError(event.message);
           if (event.details?.conversation_id) setActiveConversationId(event.details.conversation_id);
@@ -271,8 +298,27 @@ export default function useGenAIChat() {
     try {
       const attachment = await GenAIService.uploadAttachment(file, activeConversationId, activeProjectId);
       if (scope !== attachmentScopeRef.current) return;
-      setSelectedAttachmentIds(current => addComposerAttachment(current, attachment.id));
+      setSelectedAttachmentIds(current => pendingResolution?.action === "predict"
+        && pendingResolution.arguments.prediction_mode === "image_batch"
+        && supportedPredictionImage.test(file.name)
+        ? addComposerAttachment(current, attachment.id)
+        : (pendingResolution?.action === "prediction_mode" || pendingResolution?.action === "predict"
+          && pendingResolution.arguments.prediction_mode === "csv")
+          && file.name.toLowerCase().endsWith(".csv")
+          ? addComposerAttachment(current, attachment.id)
+        : (pendingResolution?.action === "prediction_mode" || pendingResolution?.action === "predict"
+          && pendingResolution.arguments.prediction_mode === "image")
+          && supportedPredictionImage.test(file.name)
+          ? [attachment.id] : addComposerAttachment(current, attachment.id));
       setAttachments(current => [...current.filter(item => item.id !== attachment.id), attachment]);
+      if (pendingResolution?.tool === "automl" && pendingResolution.action === "predict"
+          && pendingResolution.arguments.prediction_mode === "csv" && file.name.toLowerCase().endsWith(".csv")) {
+        setPendingResolution(current => current && current.tool === "automl" && current.action === "predict" ? {
+          ...current, attachmentIds: [attachment.id],
+          arguments: { ...current.arguments, prediction_mode: "csv", attachment_id: attachment.id,
+            prediction_attachment_id: attachment.id },
+        } : current);
+      }
       if (activeConversationId) {
         const save = attachmentSaveRef.current.catch(() => undefined).then(async () => {
           if (scope === attachmentScopeRef.current) {
@@ -286,7 +332,7 @@ export default function useGenAIChat() {
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "The file could not be attached."); setToolActivity("");
     }
-  }, [activeConversationId, activeProjectId, setSelectedAttachmentIds]);
+  }, [activeConversationId, activeProjectId, pendingResolution, setSelectedAttachmentIds]);
 
   const deleteAttachment = useCallback(async (id: string) => {
     const nextSelection = removeComposerAttachment(selectedAttachmentIds, id);
@@ -306,7 +352,9 @@ export default function useGenAIChat() {
   const toggleAttachment = useCallback((id: string) => {
     const nextSelection = selectedAttachmentIds.includes(id)
       ? removeComposerAttachment(selectedAttachmentIds, id)
-      : pendingResolution ? [id] : addComposerAttachment(selectedAttachmentIds, id);
+      : pendingResolution?.tool === "autodl" && pendingResolution.arguments.prediction_mode === "image_batch"
+        ? addComposerAttachment(selectedAttachmentIds, id)
+        : pendingResolution ? [id] : addComposerAttachment(selectedAttachmentIds, id);
     setSelectedAttachmentIds(nextSelection);
     if (activeConversationId) {
       void GenAIService.setActiveAttachments(activeConversationId, nextSelection).catch(
@@ -328,11 +376,12 @@ export default function useGenAIChat() {
   const choosePredictionResource = useCallback(async (candidate: Record<string, unknown>) => {
     const pending = pendingResolution;
     if (!pending) return;
-    const identifiers = ["model_filename", "model_id", "run_id", "attachment_id"];
+    const identifiers = ["model_filename", "model_id", "run_id", "attachment_id", "target_column", "target_confirmed_by_user", "target_detection_source", "target_detection_confidence"];
     const selected = Object.fromEntries(identifiers.filter(key => candidate[key]).map(key => [key, candidate[key]]));
     setPendingResolution(null); setError(null);
-    await sendMessage(pending.query, false, {
-      tool: pending.tool, action: pending.action, attachmentIds: pending.attachmentIds,
+    await sendMessage(selected.target_column ? `target_column: ${selected.target_column}` : pending.query, false, {
+      tool: pending.tool, action: pending.action,
+      attachmentIds: selected.attachment_id ? [String(selected.attachment_id)] : pending.attachmentIds,
       arguments: { ...pending.arguments, ...selected },
     }, true);
   }, [pendingResolution, sendMessage]);

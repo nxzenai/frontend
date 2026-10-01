@@ -3,12 +3,14 @@
 import { Children, isValidElement, type ComponentProps, type FormEvent, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import Image from "next/image";
 import {
   AlertCircle, Bot, Check, Copy, ExternalLink, FileText, FolderPlus, Paperclip, Pencil,
   Plus, RotateCcw, Send, Settings2, Sparkles, Square, Trash2, User, Wrench, X,
 } from "lucide-react";
 
 import useGenAIChat from "@/hooks/useGenAIChat";
+import genaiService from "@/services/genai.service";
 import type { Citation, ModelTier, ProjectInput, ReasoningLevel } from "@/types/genai";
 
 function CopyButton({ text, code = false }: { text: string; code?: boolean }) {
@@ -62,19 +64,54 @@ export default function ChatWindow() {
   const [showProject, setShowProject] = useState(false);
   const [showTools, setShowTools] = useState(false);
   const [memoryInput, setMemoryInput] = useState("");
+  const [downloadError, setDownloadError] = useState("");
+  const [mappingValues, setMappingValues] = useState<Record<string, string>>({});
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const pendingPredictionMode = chat.pendingResolution?.action === "prediction_mode";
+  const targetConfirmation = chat.pendingResolution?.missingFields.includes("target confirmation") ?? false;
+  const labelMappingRequired = chat.pendingResolution?.missingFields.includes("target label mapping") ?? false;
+  const clusterPredictionRequired = chat.pendingResolution?.missingFields.includes("prediction required") ?? false;
+  const clusterCountRequired = chat.pendingResolution?.missingFields.includes("cluster count") ?? false;
+  const clusterNamingRequired = chat.pendingResolution?.action === "cluster_naming";
+  const targetClasses = (chat.pendingResolution?.arguments.target_classes as string[] | undefined) ?? [];
+  const pendingCsvPrediction = chat.pendingResolution?.action === "predict"
+    && chat.pendingResolution.arguments.prediction_mode === "csv";
+  const predictionImageMode = (pendingPredictionMode || chat.pendingResolution?.action === "predict")
+    && chat.pendingResolution?.tool === "autodl"
+    && chat.pendingResolution.arguments.task === "image_classification";
+  const predictionImageBatch = predictionImageMode && chat.pendingResolution?.arguments.prediction_mode === "image_batch";
+  const predictionCsvOnly = pendingPredictionMode && chat.pendingResolution?.tool === "autodl"
+    && String(chat.pendingResolution.arguments.task ?? "").startsWith("time_series_");
+  const trainingAttachmentId = String(chat.pendingResolution?.arguments.dataset_attachment_id
+    ?? chat.pendingResolution?.arguments.training_attachment_id ?? "");
+  const predictionFileCount = chat.attachments.filter(file => chat.selectedAttachmentIds.includes(file.id)
+    && file.id !== trainingAttachmentId
+    && (predictionImageMode ? /\.(png|jpe?g|webp|bmp|tiff?)$/i.test(file.filename)
+      : file.filename.toLowerCase().endsWith(".csv"))).length;
+  const predictionFileReady = (pendingPredictionMode || pendingCsvPrediction || predictionImageMode)
+    && predictionFileCount >= (predictionImageBatch ? 2 : 1);
+  const predictionFileAction = predictionImageMode ? "use attached file" : "use CSV";
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chat.messages]);
 
   function submit(event?: FormEvent) {
     event?.preventDefault();
-    if (!input.trim() || chat.isLoading) return;
-    const value = input; setInput(""); void chat.sendMessage(value);
+    if (chat.isLoading || (!input.trim() && !predictionFileReady)) return;
+    const value = input.trim() || predictionFileAction; setInput(""); void chat.sendMessage(value);
   }
 
   function inputKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); submit(); }
+  }
+
+  async function downloadExport(exportValue: unknown) {
+    if (!exportValue || typeof exportValue !== "object") return;
+    const value = exportValue as { id?: string; filename?: string };
+    if (!value.id || !value.filename) return;
+    setDownloadError("");
+    try { await genaiService.downloadPredictionExport(value.id, value.filename); }
+    catch { setDownloadError("The prediction file could not be downloaded."); }
   }
 
   function tierAvailable(tier: ModelTier) {
@@ -157,6 +194,17 @@ export default function ChatWindow() {
             <div className={`group min-w-0 max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-7 ${message.role === "user" ? "bg-blue-600 text-white" : "border border-slate-700 bg-slate-950 text-slate-200"}`}>
               {message.role === "assistant" ? <>
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ pre: CodePre }}>{message.content || "…"}</ReactMarkdown>
+                {message.metadata?.prediction_exports && <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-800 pt-3">
+                  {(["csv", "xlsx"] as const).map(format => {
+                    const item = (message.metadata?.prediction_exports as Record<string, unknown>)[format];
+                    return item ? <button key={format} type="button" onClick={() => void downloadExport(item)} className="rounded border border-blue-400/40 px-3 py-1 text-xs text-blue-200 hover:bg-blue-400/10">{format === "csv" && message.metadata?.autodl_time_series_forecast ? "Download forecast CSV" : `Download ${format === "csv" ? "CSV" : "Excel"}`}</button> : null;
+                  })}
+                  {message.id === chat.messages.at(-1)?.id && <><button type="button" onClick={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })} className="rounded border border-blue-400/40 px-3 py-1 text-xs text-blue-200 hover:bg-blue-400/10">Test Another Input</button><button type="button" onClick={() => void chat.sendMessage("finish")} className="rounded border border-slate-600 px-3 py-1 text-xs text-slate-300 hover:bg-slate-800">Finish</button></>}
+                </div>}
+                {message.metadata?.handled_by === "autodl" && message.metadata?.native_action === "predict"
+                  && typeof message.metadata.native_gradcam_image === "string"
+                  && message.metadata.native_gradcam_image.startsWith("data:image/png;base64,")
+                  && <figure className="mt-4"><Image src={message.metadata.native_gradcam_image} alt="Native AutoDL Grad-CAM heatmap" width={512} height={512} unoptimized className="max-h-96 max-w-full rounded-lg object-contain" /><figcaption className="text-xs text-slate-400">Native Grad-CAM visualization</figcaption></figure>}
                 {message.content && <CopyButton text={message.content} />}
                 {Array.isArray(message.metadata?.citations) && (message.metadata.citations as Citation[]).length > 0 && <div className="mt-3 border-t border-slate-800 pt-2"><p className="mb-1 text-xs font-semibold text-slate-500">Sources</p>{(message.metadata.citations as Citation[]).map((citation, index) => citation.url.startsWith("http") ? <a key={`${citation.url}-${index}`} href={citation.url} target="_blank" rel="noreferrer" className="mr-3 inline-flex items-center gap-1 text-xs text-blue-300 hover:underline">{citation.title || `Source ${index + 1}`}{citation.date ? ` (${citation.date})` : ""} <ExternalLink size={10} /></a> : <span key={`${citation.url}-${index}`} className="mr-3 inline-flex items-center gap-1 text-xs text-slate-400"><FileText size={10} />{citation.title}</span>)}</div>}
               </> : <p className="whitespace-pre-wrap">{message.content}</p>}
@@ -168,9 +216,14 @@ export default function ChatWindow() {
 
       {chat.routeInfo && <div className="border-t border-slate-800 px-5 py-2 text-xs text-slate-500">{chat.routeInfo}</div>}
       {chat.toolActivity && <div className="border-t border-slate-800 px-5 py-2 text-xs text-slate-400"><Wrench className="mr-1 inline" size={12} />{chat.toolActivity}</div>}
+      {(clusterPredictionRequired || clusterCountRequired || clusterNamingRequired) && <div className="flex flex-wrap gap-2 border-t border-blue-500/20 px-5 py-2 text-sm text-blue-100">
+        {clusterPredictionRequired && ["Yes", "No"].map(choice => <button key={choice} type="button" disabled={chat.isLoading} onClick={() => void chat.sendMessage(choice)} className="rounded border border-blue-300/40 px-3 py-1.5 disabled:opacity-40">{choice}</button>)}
+        {clusterCountRequired && ["Auto Detect", "2", "3", "4", "5", "Custom"].map(choice => <button key={choice} type="button" disabled={chat.isLoading} onClick={() => choice === "Custom" ? setInput("custom ") : void chat.sendMessage(choice)} className="rounded border border-blue-300/40 px-3 py-1.5 disabled:opacity-40">{choice}</button>)}
+        {clusterNamingRequired && ["Accept Names", "Edit Names", "Keep IDs"].map(choice => <button key={choice} type="button" disabled={chat.isLoading} onClick={() => choice === "Edit Names" ? setInput("0=") : void chat.sendMessage(choice)} className="rounded border border-blue-300/40 px-3 py-1.5 disabled:opacity-40">{choice}</button>)}
+      </div>}
       {chat.pendingResolution && <div className="border-t border-blue-500/20 bg-blue-500/10 px-5 py-3 text-sm text-blue-100">
         {chat.pendingResolution.candidates.length > 0 ? <div className="flex flex-wrap items-center gap-2">
-          <span className="mr-1">{chat.pendingResolution.candidates.some(candidate => candidate.attachment_id)
+          <span className="mr-1">{chat.pendingResolution.candidates.some(candidate => candidate.target_column) ? "Choose a target column: " : chat.pendingResolution.candidates.some(candidate => candidate.attachment_id)
             ? chat.pendingResolution.action === "train" ? "Choose a dataset:" : "Choose an image or CSV:"
             : chat.pendingResolution.action === "predict" ? "Choose a trained model:" : "Choose a resource:"}</span>
           {chat.pendingResolution.candidates.map((candidate, index) => {
@@ -178,16 +231,17 @@ export default function ChatWindow() {
             return <button key={`${label}-${index}`} type="button" onClick={() => void chat.choosePredictionResource(candidate)} className="rounded border border-blue-300/40 px-3 py-1.5 hover:bg-blue-400/10">{label}</button>;
           })}
           <button type="button" onClick={chat.dismissResolution} className="ml-auto text-blue-200/70">Cancel</button>
-        </div> : <div className="flex items-center gap-2"><span className="flex-1">{chat.pendingResolution.message
-          ?? missingInputQuestion(chat.pendingResolution.missingFields)}</span><button type="button" onClick={chat.dismissResolution} className="text-blue-200/70">Cancel</button></div>}
+        </div> : <div className="flex flex-wrap items-center gap-2"><span className="flex-1">{chat.pendingResolution.missingFields.includes("business problem") ? <strong className="mr-2">Business Problem</strong> : targetConfirmation ? <strong className="mr-2">Target Detected</strong> : labelMappingRequired ? <strong className="mr-2">Label Mapping</strong> : null}{chat.pendingResolution.message
+          ?? missingInputQuestion(chat.pendingResolution.missingFields)}</span>{targetConfirmation && <><button type="button" disabled={chat.isLoading} onClick={() => void chat.sendMessage("confirm target")} className="rounded bg-blue-500 px-3 py-1.5 font-semibold text-white disabled:opacity-40">Confirm Target</button><button type="button" disabled={chat.isLoading} onClick={() => void chat.sendMessage("choose another target")} className="rounded border border-blue-300/40 px-3 py-1.5 disabled:opacity-40">Choose Another Target</button></>}{labelMappingRequired && <div className="flex w-full flex-wrap items-center gap-2">{targetClasses.map(value => <label key={value} className="flex items-center gap-1">{value} → <input value={mappingValues[value] ?? ""} onChange={event => setMappingValues(current => ({ ...current, [value]: event.target.value }))} className="w-36 rounded border border-blue-300/40 bg-slate-950 px-2 py-1 text-white" aria-label={`Meaning of ${value}`} /></label>)}<button type="button" disabled={chat.isLoading || targetClasses.some(value => !mappingValues[value]?.trim())} onClick={() => void chat.sendMessage(targetClasses.map(value => `${value}=${mappingValues[value].trim()}`).join(", "))} className="rounded bg-blue-500 px-3 py-1.5 font-semibold text-white disabled:opacity-40">Confirm Mapping</button></div>}{(pendingPredictionMode || pendingCsvPrediction || predictionImageMode) && <>{pendingPredictionMode && !predictionImageMode && !predictionCsvOnly && <button type="button" disabled={chat.isLoading} onClick={() => void chat.sendMessage(chat.pendingResolution?.tool === "autonlp" ? "enter text" : "manual values")} className="rounded border border-blue-300/40 px-3 py-1.5 disabled:opacity-40">{chat.pendingResolution?.tool === "autonlp" ? "Enter Text" : "Manual Values"}</button>}<button type="button" disabled={chat.isLoading} onClick={() => pendingPredictionMode && chat.pendingResolution?.tool === "automl" ? void chat.sendMessage("Upload CSV") : fileRef.current?.click()} className="rounded border border-blue-300/40 px-3 py-1.5 disabled:opacity-40">{predictionImageBatch ? "Upload Images" : predictionImageMode ? "Upload Single Image" : "Upload CSV"}</button>{pendingPredictionMode && predictionImageMode && <button type="button" disabled={chat.isLoading} onClick={() => void chat.sendMessage("batch prediction")} className="rounded border border-blue-300/40 px-3 py-1.5 disabled:opacity-40">Upload Multiple Images</button>}{predictionFileReady && <button type="button" disabled={chat.isLoading} onClick={() => void chat.sendMessage(predictionFileAction)} className="rounded bg-blue-500 px-3 py-1.5 font-semibold text-white disabled:opacity-40">Continue with {predictionImageBatch ? `${predictionFileCount} images` : predictionImageMode ? "image" : "CSV"}</button>}{pendingPredictionMode && <button type="button" disabled={chat.isLoading} onClick={() => void chat.sendMessage("finish")} className="rounded border border-blue-300/40 px-3 py-1.5 disabled:opacity-40">Finish</button>}</>}<button type="button" onClick={chat.dismissResolution} className="text-blue-200/70">Cancel</button></div>}
       </div>}
-      {chat.pendingConfirmation && <div className="flex items-center gap-3 border-t border-amber-500/20 bg-amber-500/10 px-5 py-3 text-sm text-amber-100"><AlertCircle size={16} /><span className="flex-1">{chat.pendingConfirmation.message}</span><button type="button" onClick={() => void chat.confirmTool()} className="rounded bg-amber-500 px-3 py-1.5 font-semibold text-slate-950">Confirm</button><button type="button" onClick={chat.dismissConfirmation} className="rounded border border-amber-400/40 px-3 py-1.5">Cancel</button></div>}
+      {chat.pendingConfirmation && <div className="flex items-center gap-3 border-t border-amber-500/20 bg-amber-500/10 px-5 py-3 text-sm text-amber-100"><AlertCircle size={16} /><span className="flex-1">{chat.pendingConfirmation.message}</span><button type="button" onClick={() => void chat.confirmTool()} className="rounded bg-amber-500 px-3 py-1.5 font-semibold text-slate-950">{chat.pendingConfirmation.action === "predict" ? "Confirm prediction" : "Confirm"}</button><button type="button" onClick={chat.dismissConfirmation} className="rounded border border-amber-400/40 px-3 py-1.5">Cancel</button></div>}
       {chat.error && <div className="border-t border-red-500/20 bg-red-500/10 px-5 py-2 text-sm text-red-300">{chat.error}</div>}
+      {downloadError && <div className="border-t border-red-500/20 bg-red-500/10 px-5 py-2 text-sm text-red-300">{downloadError}</div>}
       <div className="border-t border-slate-700 p-4">
         {chat.selectedAttachmentIds.length > 0 && <div className="mx-auto mb-2 flex max-w-4xl flex-wrap gap-2">{chat.attachments.filter(file => chat.selectedAttachmentIds.includes(file.id)).map(file => {
           const selected = chat.selectedAttachmentIds.includes(file.id);
           return <span key={file.id} className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs ${selected ? "border-pink-500 bg-pink-500/10 text-pink-100" : "border-slate-700 bg-slate-950 text-slate-400"}`}>
-            <span data-attachment-ready className="inline-flex items-center gap-1" title="Upload complete / ready"><FileText size={12} />{file.filename}<Check size={11} aria-hidden="true" /></span>
+            <span data-attachment-ready className="inline-flex items-center gap-1" title="Upload complete / ready"><FileText size={12} />{pendingPredictionMode || pendingCsvPrediction || predictionImageMode ? file.id === trainingAttachmentId ? "Training dataset: " : "Test input: " : ""}{file.filename}<Check size={11} aria-hidden="true" /></span>
             <button type="button" onClick={() => void chat.deleteAttachment(file.id)} className="ml-1 text-slate-500 hover:text-red-300" title="Remove attachment"><X size={12} /></button>
           </span>;
         })}</div>}
@@ -195,7 +249,7 @@ export default function ChatWindow() {
           <input ref={fileRef} type="file" multiple accept=".pdf,.docx,.txt,.csv,.xlsx,.zip,.py,.sql,.png,.jpg,.jpeg,.webp,.bmp,.tif,.tiff" className="hidden" onChange={event => { Array.from(event.target.files ?? []).forEach(file => void chat.uploadAttachment(file)); event.currentTarget.value = ""; }} />
           <button type="button" onClick={() => fileRef.current?.click()} className="rounded-xl p-3 text-slate-400 hover:bg-slate-800 hover:text-white" title="Attach a document, dataset, source file, or image"><Paperclip size={16} /></button>
           <textarea value={input} onChange={event => setInput(event.target.value)} onKeyDown={inputKeyDown} rows={1} placeholder="Message the assistant" className="max-h-40 min-h-11 flex-1 resize-none bg-transparent px-3 py-2.5 text-sm text-white outline-none" />
-          {chat.isLoading ? <button type="button" onClick={() => void chat.stopGeneration()} className="rounded-xl bg-slate-700 p-3 text-white" title="Stop generation"><Square size={16} /></button> : <button type="submit" disabled={!input.trim()} className="rounded-xl bg-pink-600 p-3 text-white disabled:opacity-40" title="Send"><Send size={16} /></button>}
+          {chat.isLoading ? <button type="button" onClick={() => void chat.stopGeneration()} className="rounded-xl bg-slate-700 p-3 text-white" title="Stop generation"><Square size={16} /></button> : <button type="submit" disabled={!input.trim() && !predictionFileReady} className="rounded-xl bg-pink-600 p-3 text-white disabled:opacity-40" title={predictionFileReady && !input.trim() ? `Continue with ${predictionImageMode ? "image" : "CSV"}` : "Send"}><Send size={16} /></button>}
         </form>
         <div className="mx-auto mt-2 flex max-w-4xl justify-between text-xs text-slate-600"><span>Enter to send · Shift+Enter for a new line</span>{chat.messages.some(message => message.role === "assistant") && !chat.isLoading && <button type="button" onClick={() => void chat.regenerate()} className="flex items-center gap-1 hover:text-slate-300"><RotateCcw size={12} /> Regenerate</button>}</div>
       </div>
