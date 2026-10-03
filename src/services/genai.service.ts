@@ -10,6 +10,11 @@ import type {
   Preferences,
   Project,
   ProjectInput,
+  ProjectDocument,
+  PromptTemplate,
+  PromptVersion,
+  PromptRun,
+  PromptPracticeAttempt,
   StreamEvent,
   ToolStatus,
 } from "@/types/genai";
@@ -31,6 +36,70 @@ function authHeaders(): Record<string, string> {
 }
 
 class GenAIService {
+  async projectDocuments(projectId: string): Promise<ProjectDocument[]> {
+    return (await api.get<ProjectDocument[]>(`/genai/projects/${projectId}/documents`)).data;
+  }
+
+  async uploadProjectDocument(projectId: string, file: File): Promise<ProjectDocument> {
+    const body = new FormData(); body.append("file", file);
+    return (await api.post<ProjectDocument>(`/genai/projects/${projectId}/documents`, body)).data;
+  }
+
+  async selectProjectDocuments(projectId: string, ids: string[]): Promise<void> {
+    await api.put(`/genai/projects/${projectId}/documents/selection`, { document_ids: ids });
+  }
+
+  async removeProjectDocument(projectId: string, documentId: string): Promise<void> {
+    await api.delete(`/genai/projects/${projectId}/documents/${documentId}`);
+  }
+
+  async promptTemplates(projectId: string | null): Promise<PromptTemplate[]> {
+    return (await api.get<PromptTemplate[]>("/genai/prompt-lab/templates", { params: { project_id: projectId ?? undefined } })).data;
+  }
+
+  async createPromptTemplate(value: Pick<PromptTemplate, "name" | "system_prompt" | "user_prompt" | "default_model" | "project_id">): Promise<PromptTemplate> {
+    return (await api.post<PromptTemplate>("/genai/prompt-lab/templates", value)).data;
+  }
+
+  async updatePromptTemplate(id: string, value: Pick<PromptTemplate, "name" | "system_prompt" | "user_prompt" | "default_model" | "project_id">): Promise<PromptTemplate> {
+    return (await api.patch<PromptTemplate>(`/genai/prompt-lab/templates/${id}`, value)).data;
+  }
+
+  async duplicatePromptTemplate(id: string): Promise<PromptTemplate> {
+    return (await api.post<PromptTemplate>(`/genai/prompt-lab/templates/${id}/duplicate`)).data;
+  }
+
+  async deletePromptTemplate(id: string): Promise<void> {
+    await api.delete(`/genai/prompt-lab/templates/${id}`);
+  }
+
+  async promptVersions(id: string): Promise<PromptVersion[]> {
+    return (await api.get<PromptVersion[]>(`/genai/prompt-lab/templates/${id}/versions`)).data;
+  }
+
+  async restorePromptVersion(id: string, versionId: string): Promise<PromptTemplate> {
+    return (await api.post<PromptTemplate>(`/genai/prompt-lab/templates/${id}/versions/${versionId}/restore`)).data;
+  }
+
+  async promptRuns(id: string): Promise<PromptRun[]> {
+    return (await api.get<PromptRun[]>("/genai/prompt-lab/runs", { params: { template_id: id } })).data;
+  }
+
+  async runPrompt(templateId: string, variableValues: Record<string, string>, models: string[], useKnowledgeBase: boolean,
+                  options: { document_ids: string[]; temperature: number | null; max_tokens: number | null; reasoning: "quick" | "standard" | "deep" }): Promise<PromptRun[]> {
+    return (await api.post<PromptRun[]>("/genai/prompt-lab/runs", {
+      template_id: templateId, variable_values: variableValues, models, use_knowledge_base: useKnowledgeBase, ...options,
+    })).data;
+  }
+  async practiceAttempts(): Promise<PromptPracticeAttempt[]> {
+    return (await api.get<PromptPracticeAttempt[]>("/genai/prompt-lab/practice/attempts")).data;
+  }
+  async runPractice(value: { lesson_id: string; exercise_id: string; difficulty: string; system_prompt: string; prompt_text: string; model: string; project_id: string | null; document_ids: string[] }): Promise<PromptPracticeAttempt> {
+    return (await api.post<PromptPracticeAttempt>("/genai/prompt-lab/practice/attempts", value)).data;
+  }
+  async evaluatePractice(id: string, value: { evaluation_score: number; evaluation_breakdown: Record<string, number>; deterministic_checks: Array<{ label: string; passed: boolean; detail: string }> }): Promise<PromptPracticeAttempt> {
+    return (await api.patch<PromptPracticeAttempt>(`/genai/prompt-lab/practice/attempts/${id}/evaluation`, value)).data;
+  }
   async createConversation(
     projectId?: string | null
   ): Promise<ConversationSummary> {

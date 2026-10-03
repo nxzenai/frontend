@@ -179,6 +179,7 @@ export default function ChatWindow() {
           <select value={chat.reasoning} onChange={event => chat.setReasoning(event.target.value as ReasoningLevel)} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white">
             <option value="quick">Quick</option><option value="standard">Standard</option><option value="deep">Deep</option>
           </select>
+          {chat.activeProjectId && <label className="flex items-center gap-2 text-xs text-slate-300"><input type="checkbox" checked={chat.projectDocumentsOnly} disabled={Boolean(chat.pendingResolution || chat.pendingConfirmation)} onChange={event => chat.setProjectDocumentsOnly(event.target.checked)} />Project documents only</label>}
         </div>
       </header>
 
