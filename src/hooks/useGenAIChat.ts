@@ -41,6 +41,7 @@ export default function useGenAIChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [tier, setTier] = useState<ModelTier>("auto");
   const [reasoning, setReasoning] = useState<ReasoningLevel>("standard");
+  const [projectDocumentsOnly, setProjectDocumentsOnly] = useState(false);
   const [health, setHealth] = useState<GenAIHealth | null>(null);
   const [preferences, setPreferences] = useState<Preferences>({ custom_preferences: {} });
   const [memories, setMemories] = useState<Memory[]>([]);
@@ -97,6 +98,7 @@ export default function useGenAIChat() {
     setError(null);
     const conversation = await GenAIService.getConversation(id);
     setActiveConversationId(id);
+    setProjectDocumentsOnly(false);
     setMessages(conversation.messages);
     setTier(conversation.selected_tier);
     setReasoning(conversation.reasoning_level);
@@ -177,6 +179,7 @@ export default function useGenAIChat() {
         conversation_id: activeConversationId, message: query, tier, reasoning, regenerate,
         tools: resolved ? [resolved.tool] : [], attachment_ids: messageAttachmentIds,
         project_id: activeProjectId, confirmation_id: confirmationId,
+        use_project_documents_only: projectDocumentsOnly && !pendingResolution && !pendingConfirmation,
         tool_arguments: resolved ? { [resolved.tool]: resolved.arguments } : {},
       }, (event: StreamEvent) => {
         if (event.type === "metadata") {
@@ -239,7 +242,7 @@ export default function useGenAIChat() {
       controllerRef.current = null; generationRef.current = null; setIsLoading(false);
       setMessages(current => current.filter(message => message.id !== temporaryAssistantId || message.content));
     }
-  }, [activeConversationId, activeProjectId, isLoading, pendingResolution, reasoning, refreshConversations, selectedAttachmentIds, tier]);
+  }, [activeConversationId, activeProjectId, isLoading, pendingResolution, pendingConfirmation, projectDocumentsOnly, reasoning, refreshConversations, selectedAttachmentIds, tier]);
 
   const stopGeneration = useCallback(async () => {
     const generationId = generationRef.current;
@@ -274,6 +277,7 @@ export default function useGenAIChat() {
 
   const selectProject = useCallback(async (projectId: string | null) => {
     attachmentScopeRef.current += 1;
+    setProjectDocumentsOnly(false);
     if (activeConversationId) await GenAIService.setConversationProject(activeConversationId, projectId);
     setActiveProjectId(projectId);
     setAttachments(activeConversationId || projectId ? await GenAIService.attachments(activeConversationId, projectId) : []);
@@ -393,6 +397,7 @@ export default function useGenAIChat() {
 
   return {
     conversations, activeConversationId, messages, tier, setTier, reasoning, setReasoning,
+    projectDocumentsOnly, setProjectDocumentsOnly,
     health, preferences, memories, projects, activeProjectId, attachments, selectedAttachmentIds, tools,
     routeInfo, toolActivity, pendingConfirmation, pendingResolution, isLoading, error,
     newChat, openConversation, sendMessage, stopGeneration, regenerate,
