@@ -192,6 +192,8 @@ export interface LeaderboardEntry {
   recall?: number | null;
   f1_score?: number | null;
   roc_auc?: number | null;
+  confusion_matrix?: number[][] | null;
+  classes?: PredictionValue[] | null;
 
   /* Regression */
   r2_score?: number | null;
@@ -298,6 +300,7 @@ export interface AutoMLStatistics {
 
 export interface AutoMLResult {
   task: string;
+  ranking_metric?: string | null;
 
   dataset_summary?: DatasetSummary;
 
@@ -314,6 +317,13 @@ export interface AutoMLResult {
   artifact?: AutoMLArtifact;
 
   clustering?: ClusteringTrainingResult;
+
+  cluster_distribution?: Array<{
+    cluster_id: PredictionValue;
+    count: number;
+    percentage: number;
+    label?: string | null;
+  }>;
 
   visual_results?: AutoMLVisualResults;
 
@@ -436,6 +446,18 @@ export interface AutoMLVisualResults {
     auc: number;
     points: Array<{ fpr: number; tpr: number }>;
   }>;
+  precision_recall_curve?: {
+    positive_class: PredictionValue;
+    average_precision?: number | null;
+    points: Array<{ recall: number; precision: number }>;
+  };
+  threshold_metrics?: Array<{
+    threshold: number;
+    precision: number;
+    recall: number;
+    f1: number;
+  }>;
+  threshold_score_type?: "probability" | "decision";
   regression_points?: Array<{
     actual: number;
     predicted: number;
@@ -447,6 +469,12 @@ export interface AutoMLVisualResults {
     cluster: PredictionValue;
   }>;
   reduced_with_pca?: boolean;
+  cluster_k_diagnostics?: Array<{
+    k: number;
+    inertia?: number | null;
+    silhouette?: number | null;
+  }>;
+  cluster_k_rows_used?: number;
 }
 
 export interface AutoMLPredictionUnsupportedDetail {

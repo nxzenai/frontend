@@ -54,12 +54,7 @@ function createFormData(
     );
   }
 
-  /*
-   * Backend can start consuming this field.
-   *
-   * Older backend versions that do not explicitly
-   * declare the field will simply ignore it.
-   */
+  /* The training route validates and uses this per-run selection metric. */
   if (
     optimizationMetric
   ) {
