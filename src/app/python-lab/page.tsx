@@ -3,6 +3,7 @@
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import NotebookList from "@/components/notebook/NotebookList";
+import LearningReturnLink from "@/components/learning/LearningReturnLink";
 
 export default function PythonLabPage() {
   return (
@@ -20,7 +21,7 @@ export default function PythonLabPage() {
           </p>
         </div>
 
-        <NotebookList />
+        <LearningReturnLink /><NotebookList />
 
       </DashboardLayout>
     </ProtectedRoute>

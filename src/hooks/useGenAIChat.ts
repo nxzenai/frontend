@@ -39,6 +39,7 @@ export default function useGenAIChat() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [datasetUnderstanding, setDatasetUnderstanding] = useState<import("@/types/genai").DatasetUnderstanding | null>(null);
   const [tier, setTier] = useState<ModelTier>("auto");
   const [reasoning, setReasoning] = useState<ReasoningLevel>("standard");
   const [projectDocumentsOnly, setProjectDocumentsOnly] = useState(false);
@@ -100,6 +101,7 @@ export default function useGenAIChat() {
     setActiveConversationId(id);
     setProjectDocumentsOnly(false);
     setMessages(conversation.messages);
+    setDatasetUnderstanding(conversation.dataset_understanding ?? null);
     setTier(conversation.selected_tier);
     setReasoning(conversation.reasoning_level);
     setActiveProjectId(conversation.project_id ?? null);
@@ -128,7 +130,7 @@ export default function useGenAIChat() {
   const newChat = useCallback(() => {
     attachmentScopeRef.current += 1;
     controllerRef.current?.abort();
-    setActiveConversationId(null); setMessages([]); setAttachments([]); setSelectedAttachmentIds([]);
+    setActiveConversationId(null); setMessages([]); setDatasetUnderstanding(null); setAttachments([]); setSelectedAttachmentIds([]);
     setError(null); setRouteInfo(""); setToolActivity(""); setPendingConfirmation(null); setPendingResolution(null);
   }, []);
 
@@ -161,7 +163,7 @@ export default function useGenAIChat() {
       && continuationAttachments[0] !== pendingResolution.attachmentIds[0]) {
       continuationArguments.attachment_id = continuationAttachments[0];
     }
-    const continuation = !resolvedOverride && !confirmationId && pendingResolution ? {
+    const continuation = !projectDocumentsOnly && !resolvedOverride && !confirmationId && pendingResolution ? {
       tool: pendingResolution.tool, action: pendingResolution.action,
       attachmentIds: continuationAttachments,
       arguments: continuationArguments,
@@ -173,17 +175,18 @@ export default function useGenAIChat() {
     const messageAttachmentIds = attachmentIdsForMessage(
       resolved?.attachmentIds ?? selectedAttachmentIds,
     );
-    if (continuation) setPendingResolution(null);
+    // Keep pending workflow until the backend confirms it was consumed. Tutor replies preserve it.
     try {
       await GenAIService.streamChat({
         conversation_id: activeConversationId, message: query, tier, reasoning, regenerate,
         tools: resolved ? [resolved.tool] : [], attachment_ids: messageAttachmentIds,
         project_id: activeProjectId, confirmation_id: confirmationId,
-        use_project_documents_only: projectDocumentsOnly && !pendingResolution && !pendingConfirmation,
+        use_project_documents_only: projectDocumentsOnly,
         tool_arguments: resolved ? { [resolved.tool]: resolved.arguments } : {},
       }, (event: StreamEvent) => {
         if (event.type === "metadata") {
           generationRef.current = event.generation_id;
+          if (event.dataset_understanding) setDatasetUnderstanding(event.dataset_understanding);
           setActiveConversationId(event.conversation_id);
           setRouteInfo(`${event.model_tier.toUpperCase()} · ${event.model_name} — ${event.route_reason}`);
         } else if (event.type === "tool") {
@@ -200,18 +203,22 @@ export default function useGenAIChat() {
           setMessages(current => current.map(message => message.id === temporaryAssistantId
             ? { ...message, content: message.content + event.content } : message));
         } else if (event.type === "done" && event.message) {
+          if (event.message.metadata?.dataset_understanding) setDatasetUnderstanding(event.message.metadata.dataset_understanding as import("@/types/genai").DatasetUnderstanding);
+          if (event.message.metadata?.updated_metric_selection) setPendingConfirmation(current => current ? { ...current, arguments: { ...current.arguments, metric_selection: event.message!.metadata!.updated_metric_selection } } : current);
           setSelectedAttachmentIds(current => preserveComposerAttachmentIds(current));
           const offer = event.message.metadata?.pending_prediction_offer as {
             tool: string; action: string; arguments: Record<string, unknown>;
             attachment_ids: string[]; missing_fields: string[];
             candidates: Array<Record<string, unknown>>; prompt: string; original_action: string;
           } | undefined;
-          setPendingResolution(offer ? {
-            tool: offer.tool, action: offer.action, arguments: offer.arguments,
-            attachmentIds: offer.attachment_ids, missingFields: offer.missing_fields,
-            candidates: offer.candidates, message: offer.prompt, query: offer.original_action,
-          } : null);
-          setPendingConfirmation(null);
+          if (!event.message.metadata?.preserve_native_workflow && !projectDocumentsOnly) {
+            setPendingResolution(offer ? {
+              tool: offer.tool, action: offer.action, arguments: offer.arguments,
+              attachmentIds: offer.attachment_ids, missingFields: offer.missing_fields,
+              candidates: offer.candidates, message: offer.prompt, query: offer.original_action,
+            } : null);
+            setPendingConfirmation(null);
+          }
           setMessages(current => current.map(message => message.id === temporaryAssistantId ? event.message! : message));
         } else if (event.type === "error") {
           setSelectedAttachmentIds(current => preserveComposerAttachmentIds(current));
@@ -370,11 +377,16 @@ export default function useGenAIChat() {
     }
   }, [activeConversationId, pendingResolution, selectedAttachmentIds]);
 
-  const confirmTool = useCallback(async () => {
+  const askDatasetTutor = useCallback(async (question: string, context: import("@/components/genai/DatasetUnderstanding").TutorRequest) => {
+    await sendMessage(question, false, { tool: "dataset_tutor", action: "explain", attachmentIds: [context.dataset_reference], arguments: { ...context } });
+  }, [sendMessage]);
+
+  const confirmTool = useCallback(async (optimizationMetric?: string, positiveLabel?: string) => {
     const pending = pendingConfirmation;
     if (!pending) return;
     setPendingConfirmation(null);
-    await sendMessage(pending.query, false, null, true, pending.confirmationId);
+    await sendMessage(pending.query, false, { tool: pending.tool, action: pending.action, attachmentIds: pending.attachmentIds,
+      arguments: optimizationMetric ? { optimization_metric: optimizationMetric, ...(positiveLabel !== undefined ? { positive_label: positiveLabel } : {}) } : {} }, true, pending.confirmationId);
   }, [pendingConfirmation, sendMessage]);
 
   const choosePredictionResource = useCallback(async (candidate: Record<string, unknown>) => {
@@ -403,7 +415,7 @@ export default function useGenAIChat() {
     newChat, openConversation, sendMessage, stopGeneration, regenerate,
     renameConversation, deleteConversation, savePreferences, addMemory, deleteMemory,
     selectProject, createProject, deleteProject, uploadAttachment, deleteAttachment, toggleAttachment,
-    confirmTool,
+    confirmTool, datasetUnderstanding, askDatasetTutor,
     dismissConfirmation: () => {
       void cancelPendingPrediction();
     },

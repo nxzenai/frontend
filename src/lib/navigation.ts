@@ -10,6 +10,11 @@ import {
   Building2,
   Users,
   Settings,
+  BookOpen,
+  ClipboardCheck,
+  FolderKanban,
+  MessageSquare,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 
@@ -40,6 +45,13 @@ export interface NavigationItem {
 }
 
 export const NAVIGATION: NavigationItem[] = [
+
+  { title: "Learning Paths", href: "/learn", icon: BookOpen, permission: "dashboard", section: "dashboard" },
+  { title: "Practice", href: "/practice", icon: ClipboardCheck, permission: "dashboard", section: "dashboard" },
+  { title: "Projects", href: "/learn/projects", icon: FolderKanban, permission: "dashboard", section: "dashboard" },
+  { title: "Assessments", href: "/assessments", icon: ClipboardCheck, permission: "dashboard", section: "dashboard" },
+  { title: "Interview", href: "/interview", icon: MessageSquare, permission: "dashboard", section: "dashboard" },
+  { title: "My Progress", href: "/my-progress", icon: TrendingUp, permission: "dashboard", section: "dashboard" },
 
     {
     title: "SQL Lab",

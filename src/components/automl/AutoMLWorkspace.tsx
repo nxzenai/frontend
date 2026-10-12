@@ -79,9 +79,9 @@ const CLASSIFICATION_METRICS: {
 }[] = [
   {
     value: "f1_score",
-    label: "F1 Score",
+    label: "Weighted F1",
     description:
-      "Balanced precision and recall.",
+      "F1 averaged across classes, weighted by class support.",
   },
   {
     value: "accuracy",
@@ -91,15 +91,15 @@ const CLASSIFICATION_METRICS: {
   },
   {
     value: "precision",
-    label: "Precision",
+    label: "Weighted Precision",
     description:
-      "How many predicted positives were correct.",
+      "Precision averaged across classes, weighted by class support.",
   },
   {
     value: "recall",
-    label: "Recall",
+    label: "Weighted Recall",
     description:
-      "How many actual positives were detected.",
+      "Recall averaged across classes, weighted by class support.",
   },
   {
     value: "roc_auc",

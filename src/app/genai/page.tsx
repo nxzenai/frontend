@@ -1,21 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 
 import ChatWindow from "@/components/genai/ChatWindow";
 import GenAIExtras from "@/components/genai/GenAIExtras";
+import LearningReturnLink from "@/components/learning/LearningReturnLink";
 
 export default function GenAIPage() {
   const [tab, setTab] = useState<"chat" | "documents" | "prompts">("chat");
+
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("tab");
+    if (requested === "prompts" || requested === "documents") setTab(requested);
+  }, []);
 
   return (
 
     <ProtectedRoute>
 
       <DashboardLayout>
+
+        <LearningReturnLink />
 
         <nav className="mb-3 flex gap-2" aria-label="GenAI workspace">
           {([ ["chat", "Chat"], ["documents", "Documents"], ["prompts", "Prompt Lab"] ] as const).map(([key, label]) => (
