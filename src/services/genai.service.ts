@@ -1,4 +1,5 @@
 import api from "@/lib/studioApi";
+import type { EvidenceRecord } from "@/types/evidence";
 
 import type {
   Attachment,
@@ -36,6 +37,14 @@ function authHeaders(): Record<string, string> {
 }
 
 class GenAIService {
+  async evidence(conversationId: string, evidenceId: string): Promise<EvidenceRecord> {
+    return (await api.get<EvidenceRecord>(`/genai/conversations/${encodeURIComponent(conversationId)}/evidence/${encodeURIComponent(evidenceId)}`)).data;
+  }
+
+  async validateEvidence(conversationId: string, evidenceId: string, refresh: boolean): Promise<EvidenceRecord> {
+    return (await api.post<EvidenceRecord>(`/genai/conversations/${encodeURIComponent(conversationId)}/evidence/${encodeURIComponent(evidenceId)}/research`, { confirmed: true, refresh })).data;
+  }
+
   async projectDocuments(projectId: string): Promise<ProjectDocument[]> {
     return (await api.get<ProjectDocument[]>(`/genai/projects/${projectId}/documents`)).data;
   }

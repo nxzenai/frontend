@@ -32,6 +32,8 @@ export interface ConversationDetail extends ConversationSummary {
     id: string; tool: string; action?: string; attachment_ids?: string[];
     arguments?: Record<string, unknown>; message?: string;
   } | null;
+  native_training_context?: Record<string, unknown> | null;
+  dataset_understanding?: DatasetUnderstanding | null;
   active_lab_resources?: Record<string, {
     tool?: string; run_id?: string; model_id?: string; model_filename?: string;
     status?: string; task?: string; target_column?: string; text_column?: string;
@@ -54,7 +56,7 @@ export interface ChatRequest {
 }
 
 export type StreamEvent =
-  | { type: "metadata"; conversation_id: string; generation_id: string; requested_tier: ModelTier; model_tier: ModelTier; model_name: string; reasoning: ReasoningLevel; route_reason: string }
+  | { type: "metadata"; conversation_id: string; generation_id: string; requested_tier: ModelTier; model_tier: ModelTier; model_name: string; reasoning: ReasoningLevel; route_reason: string; dataset_understanding?: DatasetUnderstanding }
   | { type: "delta"; content: string }
   | { type: "tool"; tool: string; status: "running" | "completed" | "failed"; message?: string; citations?: Citation[] }
   | { type: "confirmation_required"; conversation_id?: string; confirmation_id: string; tool: string; action?: string; message: string; attachment_ids: string[]; arguments: Record<string, unknown> }
@@ -229,4 +231,15 @@ export interface Memory {
   content: string;
   tags: string[];
   created_at: string;
+}
+
+export interface DatasetUnderstanding {
+  dataset_reference: string; filename: string; row_count: number; column_count: number;
+  semantic_status: string; updated_at: string; selected_target?: string | null; business_problem?: string | null;
+  dataset_summary: { likely_purpose?: string; row_meaning?: string; likely_domain?: string; confidence?: string };
+  columns: Array<{ native_name: string; display_name?: string; likely_meaning?: string; data_type: string; kind: string; role?: string; missing_percentage: number; sample_values: unknown[]; confidence?: string; ambiguity?: string; likely_unit?: string }>;
+  target_candidates: Array<{ column: string; likely_task: string; confidence: string; class_distribution?: Array<{ native_value: unknown; native_label: string; count: number; percentage: number }> }>;
+  class_meanings: Array<{ target: string; native_value: string; interpreted_meaning: string; confidence: string; confirmed: boolean }>;
+  learner_confirmed_mappings: Record<string, Record<string, string>>;
+  quality_warnings: Array<{ code: string; column?: string; message: string }>;
 }
