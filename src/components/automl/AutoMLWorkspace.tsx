@@ -9,7 +9,7 @@ import {
 
 import useAutoML from "@/hooks/useAutoML";
 import BestModelPrediction from "@/components/automl/BestModelPrediction";
-import ResultsVisualizations from "@/components/automl/ResultsVisualizations";
+import AutoMLResults from "@/components/automl/AutoMLResults";
 import { getAutoMLInfo } from "@/services/automl.service";
 
 import type {
@@ -18,7 +18,6 @@ import type {
   AutoMLOptimizationMetric,
   ClusterCountMode,
   ClusteringLimits,
-  LeaderboardEntry,
 } from "@/types/automl";
 
 /* ============================================================
@@ -145,12 +144,6 @@ const REGRESSION_METRICS: {
     description:
       "Mean absolute percentage error. Lower is better.",
   },
-  {
-    value: "explained_variance",
-    label: "Explained Variance",
-    description:
-      "Variance explained by the model. Higher is better.",
-  },
 ];
 
 const CLUSTERING_METRICS: {
@@ -252,235 +245,6 @@ function metricLabel(
 }
 
 /* ============================================================
-   MODEL NAME
-============================================================ */
-
-function formatModelName(
-  model?: string
-): string {
-  if (
-    !model ||
-    !model.trim()
-  ) {
-    return "Unknown Model";
-  }
-
-  const normalized =
-    model
-      .trim()
-      .toLowerCase();
-
-  const MODEL_NAMES: Record<
-    string,
-    string
-  > = {
-    logistic_regression:
-      "Logistic Regression",
-
-    extra_trees:
-      "Extra Trees",
-
-    passive_aggressive:
-      "Passive Aggressive",
-
-    linear_svc:
-      "Linear SVC",
-
-    ridge_classifier:
-      "Ridge Classifier",
-
-    sgd_classifier:
-      "SGD Classifier",
-
-    random_forest:
-      "Random Forest",
-
-    gradient_boosting:
-      "Gradient Boosting",
-
-    hist_gradient_boosting:
-      "Histogram Gradient Boosting",
-
-    decision_tree:
-      "Decision Tree",
-
-    knn:
-      "K-Nearest Neighbors",
-
-    svc:
-      "Support Vector Classifier",
-
-    gaussian_nb:
-      "Gaussian Naive Bayes",
-
-    multinomial_nb:
-      "Multinomial Naive Bayes",
-
-    bernoulli_nb:
-      "Bernoulli Naive Bayes",
-
-    xgboost:
-      "XGBoost",
-
-    catboost:
-      "CatBoost",
-
-    lightgbm:
-      "LightGBM",
-
-    linear_regression:
-      "Linear Regression",
-
-    ridge:
-      "Ridge Regression",
-
-    lasso:
-      "Lasso Regression",
-
-    elastic_net:
-      "Elastic Net",
-
-    random_forest_regressor:
-      "Random Forest Regressor",
-
-    extra_trees_regressor:
-      "Extra Trees Regressor",
-
-    gradient_boosting_regressor:
-      "Gradient Boosting Regressor",
-
-    hist_gradient_boosting_regressor:
-      "Histogram Gradient Boosting Regressor",
-
-    decision_tree_regressor:
-      "Decision Tree Regressor",
-
-    random_forest_classifier:
-      "Random Forest Classifier",
-
-    kmeans:
-      "K-Means",
-
-    mini_batch_kmeans:
-      "Mini-Batch K-Means",
-
-    agglomerative_clustering:
-      "Agglomerative Clustering",
-
-    dbscan:
-      "DBSCAN",
-
-    birch:
-      "BIRCH",
-
-    spectral_clustering:
-      "Spectral Clustering",
-  };
-
-  if (
-    MODEL_NAMES[
-      normalized
-    ]
-  ) {
-    return MODEL_NAMES[
-      normalized
-    ];
-  }
-
-  /*
-   * Generic fallback for future models.
-   *
-   * Example:
-   *
-   * "some_new_model"
-   * → "Some New Model"
-   */
-  return normalized
-    .replace(
-      /[_-]+/g,
-      " "
-    )
-    .replace(
-      /\b\w/g,
-      (char) =>
-        char.toUpperCase()
-    );
-}
-
-/* ============================================================
-   PRIMARY METRIC VALUE
-============================================================ */
-
-function metricValue(
-  row: LeaderboardEntry,
-  metric: AutoMLOptimizationMetric
-): number | null {
-  const value =
-    row[
-      metric
-    ];
-
-  return typeof value ===
-    "number"
-    ? value
-    : null;
-}
-
-/* ============================================================
-   NUMBER FORMAT
-============================================================ */
-
-function pretty(
-  value: any
-): string {
-  if (
-    value ===
-      null ||
-    value ===
-      undefined
-  ) {
-    return "—";
-  }
-
-  if (
-    typeof value ===
-    "number"
-  ) {
-    if (
-      !Number.isFinite(
-        value
-      )
-    ) {
-      return "—";
-    }
-
-    /*
-     * Large regression metrics
-     * need more readable formatting.
-     */
-    if (
-      Math.abs(value) >=
-      1000
-    ) {
-      return value.toLocaleString(
-        "en-US",
-        {
-          maximumFractionDigits: 2,
-        }
-      );
-    }
-
-    return value.toFixed(
-      4
-    );
-  }
-
-  return String(
-    value
-  );
-}
-
-/* ============================================================
    COMPONENT
 ============================================================ */
 
@@ -493,9 +257,6 @@ export default function AutoMLWorkspace() {
     datasetPreview,
     datasetColumns,
     leaderboard,
-    bestModel,
-    statistics,
-    recommendations,
     inspect,
     preview,
     train,
@@ -532,6 +293,11 @@ export default function AutoMLWorkspace() {
   ] = useState<AutoMLResult | null>(
     null
   );
+  const [showConfiguration, setShowConfiguration] = useState(false);
+  const [trainedConfiguration, setTrainedConfiguration] = useState<{
+    filename: string; rows: number | null; columns: number | null;
+    task: SelectableAutoMLTask; target: string; metric: AutoMLOptimizationMetric;
+  } | null>(null);
 
   const [
     clusterCountMode,
@@ -750,6 +516,7 @@ export default function AutoMLWorkspace() {
     setPredictionTrainingResult(
       null
     );
+    setShowConfiguration(false);
 
     setClusterCountMode(
       "automatic"
@@ -880,6 +647,15 @@ export default function AutoMLWorkspace() {
       setPredictionTrainingResult(
         trainingResult
       );
+      setTrainedConfiguration({
+        filename: file.name,
+        rows: typeof shape.rows === "number" ? shape.rows : null,
+        columns: typeof shape.columns === "number" ? shape.columns : null,
+        task,
+        target: targetColumn,
+        metric: optimizationMetric,
+      });
+      setShowConfiguration(false);
     } catch {
       /*
        * Hook already stores
@@ -903,6 +679,7 @@ export default function AutoMLWorkspace() {
     ) &&
     !!optimizationMetric &&
     !clusteringValidationError;
+  const hasSuccessfulResult = predictionTrainingResult?.best_model?.success === true;
 
   /* ==========================================================
      RENDER
@@ -948,6 +725,8 @@ export default function AutoMLWorkspace() {
                 setPredictionTrainingResult(
                   null
                 );
+                setShowConfiguration(false);
+                setTrainedConfiguration(null);
 
                 setClusterCountMode(
                   "automatic"
@@ -991,7 +770,7 @@ export default function AutoMLWorkspace() {
         </div>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
+      {(!hasSuccessfulResult || showConfiguration) ? <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
 
         {/* ====================================================
             MAIN
@@ -1468,6 +1247,7 @@ export default function AutoMLWorkspace() {
 
               </select>
 
+
               {metricOptions.find(
                 (item) =>
                   item.value ===
@@ -1775,339 +1555,21 @@ export default function AutoMLWorkspace() {
 
           </div>
 
-          {/* ==================================================
-              BEST MODEL
-          ================================================== */}
-
-          {bestModel && (
-
-            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6">
-
-              <p className="text-xs font-medium uppercase tracking-wider text-emerald-400">
-                Best Model
-              </p>
-
-              <h2 className="mt-2 text-xl font-bold">
-                {
-                  formatModelName(
-                    bestModel.model_name
-                  )
-                }
-              </h2>
-
-              <p className="mt-2 text-xs text-slate-500">
-                Optimized for{" "}
-                <span className="text-slate-300">
-                  {
-                    metricLabel(
-                      optimizationMetric
-                    )
-                  }
-                </span>
-              </p>
-
-              {bestModel.training_time !==
-                undefined && (
-
-                <p className="mt-2 text-sm text-slate-400">
-
-                  Training time:{" "}
-
-                  {
-                    pretty(
-                      bestModel.training_time
-                    )
-                  }
-
-                  s
-
-                </p>
-
-              )}
-
-            </div>
-
-          )}
-
-          {predictionTrainingResult
-            ?.task === "clustering" &&
-            predictionTrainingResult
-              .clustering && (
-              <section className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-6">
-                <p className="text-xs font-medium uppercase tracking-wider text-blue-400">
-                  Clustering Setup
-                </p>
-                <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <dt className="text-xs text-slate-500">
-                      Count mode
-                    </dt>
-                    <dd className="mt-1 capitalize text-slate-200">
-                      {
-                        predictionTrainingResult
-                          .clustering
-                          .cluster_count_mode
-                      }
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-slate-500">
-                      Requested
-                    </dt>
-                    <dd className="mt-1 text-slate-200">
-                      {predictionTrainingResult
-                        .clustering
-                        .requested_number_of_clusters ??
-                        "Automatic"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-slate-500">
-                      Effective
-                    </dt>
-                    <dd className="mt-1 text-slate-200">
-                      {predictionTrainingResult
-                        .clustering
-                        .effective_number_of_clusters ??
-                        "Model-derived"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-slate-500">
-                      Future prediction
-                    </dt>
-                    <dd className="mt-1 text-slate-200">
-                      {predictionTrainingResult
-                        .clustering
-                        .prediction_supported
-                        ? "Supported"
-                        : "Unavailable"}
-                    </dd>
-                  </div>
-                </dl>
-              </section>
-            )}
-
-          {predictionTrainingResult && (
-            <ResultsVisualizations result={predictionTrainingResult} />
-          )}
-
-          {predictionTrainingResult && (
-            <BestModelPrediction
-              key={
-                predictionTrainingResult
-                  .artifact
-                  ?.model_filename ??
-                "unavailable-artifact"
-              }
-              trainingResult={
-                predictionTrainingResult
-              }
-            />
-          )}
-
-          {/* ==================================================
-              LEADERBOARD
-          ================================================== */}
-
-          {leaderboard.length >
-            0 && (
-
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl">
-
-              <div className="flex items-center justify-between gap-3">
-
-                <div>
-
-                  <h2 className="font-semibold">
-                    Model Leaderboard
-                  </h2>
-
-                  <p className="mt-1 text-xs text-slate-500">
-                    Ranked by{" "}
-                    {
-                      metricLabel(
-                        optimizationMetric
-                      )
-                    }
-                  </p>
-
-                </div>
-
-              </div>
-
-              <div className="mt-4 space-y-2">
-
-                {leaderboard.map(
-                  (
-                    row,
-                    index
-                  ) => {
-
-                    /*
-                     * Backend can provide either
-                     * model_name or model.
-                     */
-                    const rawModel =
-                      row.model_name ??
-                      row.model;
-
-                    const modelName =
-                      formatModelName(
-                        rawModel
-                      );
-
-                    const value =
-                      metricValue(
-                        row,
-                        optimizationMetric
-                      );
-
-                    return (
-
-                      <div
-                        key={`${rawModel ?? "model"}-${index}`}
-                        className="rounded-xl border border-slate-800 bg-slate-950 p-3"
-                      >
-
-                        <div className="flex items-center justify-between gap-3">
-
-                          <div className="min-w-0">
-
-                            <div className="truncate text-sm font-semibold text-slate-100">
-
-                              {
-                                modelName
-                              }
-
-                            </div>
-
-                            <div className="mt-1 text-xs text-slate-500">
-
-                              Rank #
-
-                              {
-                                row.rank ??
-                                index +
-                                  1
-                              }
-
-                            </div>
-
-                          </div>
-
-                          <div className="text-right">
-
-                            <div className="text-sm font-semibold text-blue-400">
-
-                              {
-                                pretty(
-                                  value
-                                )
-                              }
-
-                            </div>
-
-                            <div className="text-[10px] text-slate-500">
-
-                              {
-                                metricLabel(
-                                  optimizationMetric
-                                )
-                              }
-
-                            </div>
-
-                          </div>
-
-                        </div>
-
-                      </div>
-
-                    );
-                  }
-                )}
-
-              </div>
-
-            </div>
-
-          )}
-
-          {/* ==================================================
-              RECOMMENDATIONS
-          ================================================== */}
-
-          {recommendations.length >
-            0 && (
-
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
-
-              <h2 className="font-semibold">
-                Recommendations
-              </h2>
-
-              <ul className="mt-4 space-y-3">
-
-                {recommendations.map(
-                  (
-                    item,
-                    index
-                  ) => (
-
-                    <li
-                      key={
-                        index
-                      }
-                      className="text-sm leading-6 text-slate-400"
-                    >
-
-                      <span className="mr-2 text-blue-400">
-                        •
-                      </span>
-
-                      {
-                        item
-                      }
-
-                    </li>
-
-                  )
-                )}
-
-              </ul>
-
-            </div>
-
-          )}
-
-          {/* ==================================================
-              STATISTICS
-          ================================================== */}
-
-          {statistics && (
-
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
-
-              <h2 className="font-semibold">
-                Training Statistics
-              </h2>
-
-              <pre className="mt-4 max-h-72 overflow-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-400">
-                {JSON.stringify(
-                  statistics,
-                  null,
-                  2
-                )}
-              </pre>
-
-            </div>
-
-          )}
-
         </aside>
 
-      </div>
+      </div> : <section className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+        <div className="min-w-0">
+          <h2 className="truncate font-semibold text-slate-100">{trainedConfiguration?.filename ?? file?.name}</h2>
+          <p className="mt-1 text-sm text-slate-400">{trainedConfiguration?.rows ?? "—"} rows · {trainedConfiguration?.columns ?? "—"} columns · <span className="capitalize">{trainedConfiguration?.task ?? task}</span>{trainedConfiguration?.task !== "clustering" && trainedConfiguration?.target ? ` · Target: ${trainedConfiguration.target}` : ""}</p>
+          <p className="text-xs text-slate-500">Optimization metric: {metricLabel(trainedConfiguration?.metric ?? optimizationMetric)}</p>
+        </div>
+        <div className="flex gap-2"><button type="button" onClick={() => setShowConfiguration(true)} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800">Edit configuration</button><button type="button" disabled={loading || !canTrain} onClick={handleTrain} className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">Run again</button></div>
+      </section>}
+
+      {predictionTrainingResult && <div className="space-y-5">
+        <AutoMLResults result={predictionTrainingResult} />
+        <BestModelPrediction key={predictionTrainingResult.artifact?.model_filename ?? "unavailable-artifact"} trainingResult={predictionTrainingResult} />
+      </div>}
 
     </div>
   );
