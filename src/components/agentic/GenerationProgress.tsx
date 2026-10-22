@@ -9,8 +9,9 @@ export default function GenerationProgress() {
       </div>
       <h2 className="text-xl font-semibold text-white">Generating application source</h2>
       <p className="mt-2 max-w-lg text-sm leading-6 text-slate-400">
-        NxZenAI is generating and validating the approved application source. The version
-        will appear only after every file and path passes validation.
+        NxZenAI is preparing the workspace, generating three source files, and building the
+        application. Source errors may receive up to two targeted repair cycles. A ready
+        version appears only after validation and build checks pass.
       </p>
     </div>
   );

@@ -22,6 +22,11 @@ export interface AgenticProject {
   updated_at: string;
 }
 
+export type AgenticToolType = "document_search" | "csv_analysis" | "calculator" | "knowledge_retrieval" | "report_generation" | "http_api" | "sql_query";
+export type AgenticApiMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+export type AgenticSchemaType = "string" | "integer" | "number" | "boolean" | "object" | "array";
+export interface AgenticApiEndpoint { method: AgenticApiMethod; path: string; purpose: string; request_schema: Record<string, AgenticSchemaType>; response_schema: Record<string, AgenticSchemaType>; }
+
 export interface ArchitecturePlanData {
   application: {
     name: string;
@@ -35,13 +40,13 @@ export interface ArchitecturePlanData {
     goal: string;
     responsibilities: string[];
   }>;
-  tools: Array<{ name: string; purpose: string; type: string }>;
+  tools: Array<{ name: string; purpose: string; type: AgenticToolType }>;
   workflow: Array<{ step: number; actor: string; action: string; output: string }>;
-  frontend: { type: string; pages: string[]; components: string[] };
+  frontend: { type: "Next.js"; pages: string[]; components: string[] };
   backend: {
-    framework: string;
+    framework: "FastAPI";
     services: string[];
-    api_endpoints: Array<{ method: string; path: string; purpose: string }>;
+    api_endpoints: AgenticApiEndpoint[];
   };
   data: { inputs: string[]; storage: string[]; outputs: string[] };
   integrations: Array<{ name: string; purpose: string; required: boolean }>;
@@ -80,7 +85,7 @@ export interface GeneratedAgentContract {
 
 export interface GeneratedToolContract {
   name: string;
-  type: string;
+  type: AgenticToolType;
   description: string;
   configuration_required: string[];
 }

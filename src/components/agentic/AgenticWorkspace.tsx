@@ -122,6 +122,9 @@ export default function AgenticWorkspace({ project, initialPlan, onBack, onProje
       const generated = await agenticService.generateApplication(project.id);
       await refreshProject();
       await refreshVersions(generated.id);
+      await agenticService.builds(project.id).then(builds => {
+        setSuccessfulBuildVersionIds(new Set(builds.filter(item => item.status === "succeeded").map(item => item.version_id)));
+      }).catch(() => undefined);
       setTab("source");
     } catch (requestError) {
       setError(errorMessage(requestError));
