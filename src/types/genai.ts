@@ -6,7 +6,7 @@ export interface ChatMessage {
   role: "user" | "assistant" | "system";
   content: string;
   generation_id?: string | null;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, unknown> & { citations?: Citation[] };
   created_at: string;
 }
 
@@ -92,6 +92,19 @@ export interface Citation {
   title: string;
   url: string;
   date?: string;
+  citation_id?: string;
+  citation_label?: string;
+  document_id?: string;
+  document_name?: string;
+  source_type?: "project_document" | "knowledge_base_document";
+  page_number?: number;
+  page_end?: number;
+  section?: string;
+  chapter?: string;
+  chunk_id?: string;
+  project_id?: string;
+  excerpt?: string;
+  citation_usage?: "cited" | "provided_context";
 }
 
 export interface ToolStatus {
