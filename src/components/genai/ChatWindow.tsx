@@ -16,6 +16,35 @@ import DatasetUnderstanding from "./DatasetUnderstanding";
 import genaiService from "@/services/genai.service";
 import type { Citation, ModelTier, ProjectInput, ReasoningLevel } from "@/types/genai";
 
+function CitationSources({ citations }: { citations?: Citation[] }) {
+  const sources = (Array.isArray(citations) ? citations : []).filter(item => item && typeof item.url === "string");
+  const documents = sources.filter(item => item.source_type === "project_document" || item.source_type === "knowledge_base_document" || item.url.startsWith("attachment:"));
+  const otherSources = sources.filter(item => !documents.includes(item));
+  if (!sources.length) return null;
+  return <div className="mt-3 space-y-2 border-t border-slate-800 pt-2">
+    {documents.length > 0 && <section aria-label="Document sources">
+      <p className="mb-1 text-xs font-semibold text-slate-400">Sources</p>
+      {documents.some(item => item.citation_usage === "provided_context") && <p className="mb-2 text-xs text-slate-500">Retrieved passages supplied to this answer.</p>}
+      <div className="space-y-1">{documents.map((citation, index) => {
+        const location = [
+          citation.page_number ? (citation.page_end && citation.page_end !== citation.page_number ? "Pages " + citation.page_number + "–" + citation.page_end : "Page " + citation.page_number) : null,
+          citation.section, citation.chapter,
+        ].filter(Boolean).join(" · ");
+        return <details key={citation.url + "-" + (citation.citation_id ?? index)} className="rounded-lg border border-slate-800 px-3 py-1 text-xs text-slate-300">
+          <summary className="cursor-pointer break-words py-1">
+            <span className="mr-1 text-blue-300">[{citation.citation_id ?? index + 1}]</span>
+            <FileText size={12} className="mr-1 inline" />
+            {citation.document_name || citation.title.replace(/ · Chunk \d+$/, "")}
+            {location && <span className="mt-1 block pl-5 text-slate-500">{location}</span>}
+          </summary>
+          {citation.excerpt && <blockquote className="my-2 whitespace-pre-wrap break-words border-l-2 border-slate-600 pl-3 leading-5 text-slate-400">{citation.excerpt}</blockquote>}
+        </details>;
+      })}</div>
+    </section>}
+    {otherSources.length > 0 && <section aria-label="Other sources"><p className="mb-1 text-xs font-semibold text-slate-500">{documents.length ? "External sources" : "Sources"}</p>{otherSources.map((citation, index) => /^https?:\/\//i.test(citation.url) ? <a key={citation.url + "-" + index} href={citation.url} target="_blank" rel="noreferrer" className="mr-3 inline-flex items-center gap-1 text-xs text-blue-300 hover:underline">{citation.title || "Source " + (index + 1)}{citation.date ? " (" + citation.date + ")" : ""} <ExternalLink size={10} /></a> : <span key={citation.url + "-" + index} className="mr-3 inline-flex items-center gap-1 text-xs text-slate-400">{citation.title}</span>)}</section>}
+  </div>;
+}
+
 function CopyButton({ text, code = false }: { text: string; code?: boolean }) {
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -213,7 +242,7 @@ export default function ChatWindow() {
                 {typeof message.metadata?.evidence_id === "string" && chat.activeConversationId && <EvidenceIntelligence conversationId={chat.activeConversationId} evidenceId={message.metadata.evidence_id} />}
                 {message.metadata?.native_action === "train" && message.id === chat.messages.at(-1)?.id && !chat.projectDocumentsOnly && <div className="mt-2 flex flex-wrap gap-3">{["Why this metric?", "Why this model?", "Explain these warnings"].map(question => <button key={question} type="button" disabled={chat.isLoading} onClick={() => void chat.sendMessage(question)} className="text-xs text-blue-300 disabled:opacity-40">{question}</button>)}</div>}
                 {message.content && <CopyButton text={message.content} />}
-                {Array.isArray(message.metadata?.citations) && (message.metadata.citations as Citation[]).length > 0 && <div className="mt-3 border-t border-slate-800 pt-2"><p className="mb-1 text-xs font-semibold text-slate-500">Sources</p>{(message.metadata.citations as Citation[]).map((citation, index) => citation.url.startsWith("http") ? <a key={`${citation.url}-${index}`} href={citation.url} target="_blank" rel="noreferrer" className="mr-3 inline-flex items-center gap-1 text-xs text-blue-300 hover:underline">{citation.title || `Source ${index + 1}`}{citation.date ? ` (${citation.date})` : ""} <ExternalLink size={10} /></a> : <span key={`${citation.url}-${index}`} className="mr-3 inline-flex items-center gap-1 text-xs text-slate-400"><FileText size={10} />{citation.title}</span>)}</div>}
+                <CitationSources citations={message.metadata?.citations} />
               </> : <p className="whitespace-pre-wrap">{message.content}</p>}
             </div>
           </div>)}
